@@ -1,0 +1,265 @@
+import { promises as fs } from "fs";
+import path from "path";
+
+/**
+ * Storage Provider Interface
+ * 
+ * Abstraction layer for code storage that can be extended for:
+ * - File system (current implementation)
+ * - Git branches (future)
+ * - Database (future)
+ * - Cloud storage (future)
+ */
+
+export interface CodeFile {
+  filename: string;
+  content: string;
+}
+
+export interface CodeBundle {
+  files: Record<string, string>;
+  entrypoint: string;
+  version: number;
+  updatedAt: string;
+}
+
+export interface UserData {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface StorageProvider {
+  // User operations
+  getUser(userId: string): Promise<UserData | null>;
+  createUser(name: string): Promise<UserData>;
+  updateUser(userId: string, updates: Partial<UserData>): Promise<UserData>;
+  listUsers(): Promise<UserData[]>;
+
+  // Code operations
+  getCodeBundle(userId: string): Promise<CodeBundle | null>;
+  saveCodeBundle(userId: string, bundle: CodeBundle): Promise<void>;
+  deleteCodeBundle(userId: string): Promise<void>;
+
+  // Template operations
+  getDefaultTemplate(): Promise<CodeBundle>;
+}
+
+/**
+ * File System Storage Provider
+ * 
+ * Stores user data and code in the local filesystem:
+ * - .user-data/
+ *   - users.json (user registry)
+ *   - {userId}/
+ *     - bundle.json (code bundle metadata)
+ *     - files/
+ *       - index.tsx
+ *       - Component.tsx
+ *       - ...
+ */
+export class FileSystemStorageProvider implements StorageProvider {
+  private baseDir: string;
+  private templateDir: string;
+  private usersFile: string;
+
+  constructor() {
+    this.baseDir = path.join(process.cwd(), ".user-data");
+    this.templateDir = path.join(process.cwd(), "app", "templates", "default");
+    this.usersFile = path.join(this.baseDir, "users.json");
+  }
+
+  private async ensureDir(dir: string): Promise<void> {
+    try {
+      await fs.mkdir(dir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist
+    }
+  }
+
+  private async readJsonFile<T>(filePath: string): Promise<T | null> {
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      return JSON.parse(content) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeJsonFile<T>(filePath: string, data: T): Promise<void> {
+    await this.ensureDir(path.dirname(filePath));
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+  }
+
+  private getUserDir(userId: string): string {
+    return path.join(this.baseDir, userId);
+  }
+
+  // User operations
+  async getUser(userId: string): Promise<UserData | null> {
+    const users = await this.readJsonFile<UserData[]>(this.usersFile);
+    return users?.find((u) => u.id === userId) || null;
+  }
+
+  async createUser(name: string): Promise<UserData> {
+    const users = (await this.readJsonFile<UserData[]>(this.usersFile)) || [];
+    
+    const newUser: UserData = {
+      id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      name,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    await this.writeJsonFile(this.usersFile, users);
+
+    // Create user directory
+    await this.ensureDir(this.getUserDir(newUser.id));
+
+    return newUser;
+  }
+
+  async updateUser(userId: string, updates: Partial<UserData>): Promise<UserData> {
+    const users = (await this.readJsonFile<UserData[]>(this.usersFile)) || [];
+    const userIndex = users.findIndex((u) => u.id === userId);
+
+    if (userIndex === -1) {
+      throw new Error(`User ${userId} not found`);
+    }
+
+    users[userIndex] = {
+      ...users[userIndex],
+      ...updates,
+      id: userId, // Prevent ID from being changed
+    };
+
+    await this.writeJsonFile(this.usersFile, users);
+    return users[userIndex];
+  }
+
+  async listUsers(): Promise<UserData[]> {
+    return (await this.readJsonFile<UserData[]>(this.usersFile)) || [];
+  }
+
+  // Code operations
+  async getCodeBundle(userId: string): Promise<CodeBundle | null> {
+    const userDir = this.getUserDir(userId);
+    const bundlePath = path.join(userDir, "bundle.json");
+    const filesDir = path.join(userDir, "files");
+
+    const bundleMeta = await this.readJsonFile<{
+      entrypoint: string;
+      version: number;
+      updatedAt: string;
+      files: string[];
+    }>(bundlePath);
+
+    if (!bundleMeta) {
+      return null;
+    }
+
+    // Read all files
+    const files: Record<string, string> = {};
+    for (const filename of bundleMeta.files) {
+      try {
+        const filePath = path.join(filesDir, filename);
+        files[filename] = await fs.readFile(filePath, "utf-8");
+      } catch {
+        // File might be missing, skip it
+      }
+    }
+
+    return {
+      files,
+      entrypoint: bundleMeta.entrypoint,
+      version: bundleMeta.version,
+      updatedAt: bundleMeta.updatedAt,
+    };
+  }
+
+  async saveCodeBundle(userId: string, bundle: CodeBundle): Promise<void> {
+    const userDir = this.getUserDir(userId);
+    const bundlePath = path.join(userDir, "bundle.json");
+    const filesDir = path.join(userDir, "files");
+
+    await this.ensureDir(filesDir);
+
+    // Write individual files
+    for (const [filename, content] of Object.entries(bundle.files)) {
+      const filePath = path.join(filesDir, filename);
+      // Ensure subdirectories exist for nested files
+      await this.ensureDir(path.dirname(filePath));
+      await fs.writeFile(filePath, content, "utf-8");
+    }
+
+    // Write bundle metadata
+    await this.writeJsonFile(bundlePath, {
+      entrypoint: bundle.entrypoint,
+      version: bundle.version,
+      updatedAt: bundle.updatedAt,
+      files: Object.keys(bundle.files),
+    });
+  }
+
+  async deleteCodeBundle(userId: string): Promise<void> {
+    const userDir = this.getUserDir(userId);
+    const filesDir = path.join(userDir, "files");
+
+    try {
+      // Remove files directory
+      await fs.rm(filesDir, { recursive: true, force: true });
+      // Remove bundle.json
+      await fs.unlink(path.join(userDir, "bundle.json"));
+    } catch {
+      // Files might not exist
+    }
+  }
+
+  // Template operations
+  async getDefaultTemplate(): Promise<CodeBundle> {
+    try {
+      const manifestPath = path.join(this.templateDir, "manifest.json");
+      const manifestContent = await fs.readFile(manifestPath, "utf-8");
+      const manifest = JSON.parse(manifestContent) as {
+        name: string;
+        version: string;
+        description: string;
+        entrypoint: string;
+        files: string[];
+      };
+
+      const files: Record<string, string> = {};
+      for (const filename of manifest.files) {
+        const filePath = path.join(this.templateDir, filename);
+        files[filename] = await fs.readFile(filePath, "utf-8");
+      }
+
+      return {
+        files,
+        entrypoint: manifest.entrypoint,
+        version: 0,
+        updatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Failed to load default template:", error);
+      // Fallback minimal template
+      return {
+        files: {
+          "index.tsx": `export default function App() {
+  return (
+    <Card title="Welcome">
+      <p>Start chatting with Copilot to build your UI!</p>
+    </Card>
+  );
+}`,
+        },
+        entrypoint: "index.tsx",
+        version: 0,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  }
+}
+
+// Export singleton instance
+export const storage = new FileSystemStorageProvider();

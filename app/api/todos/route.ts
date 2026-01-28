@@ -1,0 +1,164 @@
+import { NextRequest, NextResponse } from "next/server";
+import { v4 as uuidv4 } from "uuid";
+
+// In-memory store (replace with database in production)
+export interface Todo {
+  id: string;
+  title: string;
+  category: string;
+  dueDate: string; // ISO date string
+  completed: boolean;
+  createdAt: string;
+}
+
+// Global store - in production this would be a database
+const todos: Map<string, Todo> = new Map();
+
+// Seed some initial data
+const seedData = () => {
+  if (todos.size === 0) {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const initialTodos: Omit<Todo, "id" | "createdAt">[] = [
+      { title: "Buy groceries", category: "personal", dueDate: tomorrow.toISOString(), completed: false },
+      { title: "Finish project report", category: "work", dueDate: nextWeek.toISOString(), completed: false },
+      { title: "Call mom", category: "personal", dueDate: now.toISOString(), completed: true },
+      { title: "Review PR", category: "work", dueDate: tomorrow.toISOString(), completed: false },
+      { title: "Gym workout", category: "health", dueDate: now.toISOString(), completed: false },
+    ];
+
+    initialTodos.forEach((todo) => {
+      const id = uuidv4();
+      todos.set(id, { ...todo, id, createdAt: new Date().toISOString() });
+    });
+  }
+};
+
+seedData();
+
+// GET /api/todos - Get todos (optionally filter by category or dueDate)
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category");
+  const dueDate = searchParams.get("dueDate");
+
+  let result = Array.from(todos.values());
+
+  if (category) {
+    result = result.filter((todo) => todo.category.toLowerCase() === category.toLowerCase());
+  }
+
+  if (dueDate) {
+    // Match todos due on the specified date (comparing date part only)
+    const targetDate = new Date(dueDate).toDateString();
+    result = result.filter((todo) => new Date(todo.dueDate).toDateString() === targetDate);
+  }
+
+  // Sort by due date
+  result.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+  return NextResponse.json({
+    todos: result,
+    count: result.length,
+    categories: [...new Set(Array.from(todos.values()).map((t) => t.category))],
+  });
+}
+
+// POST /api/todos - Create a new todo
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { title, category, dueDate } = body;
+
+    if (!title || !category) {
+      return NextResponse.json(
+        { error: "Title and category are required" },
+        { status: 400 }
+      );
+    }
+
+    const todo: Todo = {
+      id: uuidv4(),
+      title,
+      category: category.toLowerCase(),
+      dueDate: dueDate || new Date().toISOString(),
+      completed: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    todos.set(todo.id, todo);
+
+    return NextResponse.json({ todo, message: "Todo created successfully" }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+}
+
+// DELETE /api/todos - Delete todos by category
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category");
+  const id = searchParams.get("id");
+
+  if (id) {
+    // Delete single todo by ID
+    if (todos.has(id)) {
+      todos.delete(id);
+      return NextResponse.json({ message: "Todo deleted successfully" });
+    }
+    return NextResponse.json({ error: "Todo not found" }, { status: 404 });
+  }
+
+  if (category) {
+    // Delete all todos in category
+    let deletedCount = 0;
+    for (const [todoId, todo] of todos.entries()) {
+      if (todo.category.toLowerCase() === category.toLowerCase()) {
+        todos.delete(todoId);
+        deletedCount++;
+      }
+    }
+    return NextResponse.json({
+      message: `Deleted ${deletedCount} todos from category "${category}"`,
+      deletedCount,
+    });
+  }
+
+  return NextResponse.json(
+    { error: "Either 'id' or 'category' query parameter is required" },
+    { status: 400 }
+  );
+}
+
+// PATCH /api/todos - Update a todo (toggle complete, update title, etc.)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Todo ID is required" }, { status: 400 });
+    }
+
+    const todo = todos.get(id);
+    if (!todo) {
+      return NextResponse.json({ error: "Todo not found" }, { status: 404 });
+    }
+
+    // Apply updates
+    const updatedTodo: Todo = {
+      ...todo,
+      ...updates,
+      id: todo.id, // Prevent ID from being changed
+      createdAt: todo.createdAt, // Prevent createdAt from being changed
+    };
+
+    todos.set(id, updatedTodo);
+
+    return NextResponse.json({ todo: updatedTodo, message: "Todo updated successfully" });
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+}
