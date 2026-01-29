@@ -244,10 +244,81 @@ Edit `samples/todo-app/template/index.tsx` to change what users see initially. T
 
 ### Creating a New Sample Application
 
-1. Create `samples/your-app/` with template/, schema.ts, README.md
-2. Add API routes to `app/api/samples/your-endpoint/`
-3. Update `app/lib/storage.ts` constructor to use your sample name
-4. Update `app/api/schema/route.ts` to import your schema
+Follow these steps to add a new sample application:
+
+#### 1. Create the sample folder structure
+
+```
+samples/
+└── your-app/
+    ├── template/
+    │   ├── index.tsx       # Default UI code
+    │   └── manifest.json   # Template metadata
+    ├── schema.ts           # API schema for Copilot
+    └── README.md           # Sample documentation
+```
+
+#### 2. Create the schema file (`samples/your-app/schema.ts`)
+
+```typescript
+import { APIEndpoint } from "@/app/lib/schema";
+
+export const sampleName = "your-app";
+export const sampleDescription = "Description of your sample app";
+
+export const apiEndpoints: APIEndpoint[] = [
+  {
+    path: "/api/samples/your-endpoint",
+    method: "GET",
+    description: "What this endpoint does",
+    parameters: [],
+    response: { type: "{ data: YourType[] }", description: "Response description" },
+  },
+];
+
+export const dataTypes = `
+interface YourType {
+  id: string;
+  // ... your fields
+}
+`;
+
+export function generateApiDocumentation(): string {
+  let doc = `## ${sampleDescription}\n\n### API Endpoints\n\n`;
+  for (const api of apiEndpoints) {
+    doc += `#### ${api.method} ${api.path}\n${api.description}\n\n`;
+  }
+  doc += "### Data Types\n\n```typescript\n" + dataTypes + "```\n";
+  return doc;
+}
+```
+
+#### 3. Register the schema (`app/lib/schema-registry.ts`)
+
+```typescript
+import * as yourAppSchema from "@/samples/your-app/schema";
+
+const schemaRegistry: Record<string, SampleSchema> = {
+  "todo-app": todoAppSchema,
+  "your-app": yourAppSchema,  // Add your sample here
+};
+```
+
+#### 4. Add API routes (`app/api/samples/your-endpoint/route.ts`)
+
+Create your API route handlers following the existing todos pattern.
+
+#### 5. Set the active sample
+
+In `.env.local`:
+```env
+SAMPLE_NAME=your-app
+```
+
+Or run with:
+```bash
+SAMPLE_NAME=your-app npm run dev
+```
 
 ## Storage
 

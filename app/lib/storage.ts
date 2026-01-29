@@ -63,10 +63,12 @@ export class FileSystemStorageProvider implements StorageProvider {
   private templateDir: string;
   private usersFile: string;
 
-  constructor(sampleName: string = "todo-app") {
+  constructor(sampleName?: string) {
+    // Import dynamically to avoid circular deps, or use passed value
+    const activeSample = sampleName || process.env.SAMPLE_NAME || "todo-app";
     this.baseDir = path.join(process.cwd(), ".user-data");
     // Templates now live in the samples folder
-    this.templateDir = path.join(process.cwd(), "samples", sampleName, "template");
+    this.templateDir = path.join(process.cwd(), "samples", activeSample, "template");
     this.usersFile = path.join(this.baseDir, "users.json");
   }
 
