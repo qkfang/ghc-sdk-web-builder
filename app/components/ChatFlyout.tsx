@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import ChatMessage, { Message, ToolExecution } from "./ChatMessage";
+import ChatMessage, { Message } from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { useUser } from "../contexts/UserContext";
 
@@ -26,31 +26,6 @@ function dispatchCodeUpdate(code: string) {
   window.dispatchEvent(event);
 }
 
-interface StreamEvent {
-  type: string;
-  data?: {
-    content?: string;
-    message?: string;
-    message_id?: string;
-    turn_id?: string;
-    name?: string;
-    tool_call_id?: string;
-    delta?: string;
-    arguments?: Record<string, unknown>;
-    result?: string;
-    success?: boolean;
-    error?: string;
-    timestamp?: string;
-  };
-}
-
-// Track current turn state
-interface TurnState {
-  messageContent: string;
-  messageId: string;
-  toolIds: string[];
-}
-
 interface ChatFlyoutProps {
   isOpen: boolean;
   onClose: () => void;
@@ -61,14 +36,52 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [toolExecutions, setToolExecutions] = useState<Map<string, ToolExecution>>(new Map());
-  const [streamingContent, setStreamingContent] = useState<string>("");
   const [currentCode, setCurrentCode] = useState<string>("");
+  const [flyoutWidth, setFlyoutWidth] = useState(384); // 384px = w-96
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const flyoutRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   
   // Check if we're on the dynamic page (home or /dynamic)
   const isDynamicMode = pathname === "/" || pathname === "/dynamic";
+
+  // Min and max width constraints
+  const MIN_WIDTH = 320;
+  const MAX_WIDTH = 800;
+
+  // Handle resize drag
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      setFlyoutWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Prevent text selection while resizing
+  useEffect(() => {
+    if (isResizing) {
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "ew-resize";
+    } else {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    }
+  }, [isResizing]);
 
   // Load current code when in dynamic mode or user changes
   useEffect(() => {
@@ -117,15 +130,13 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingContent, toolExecutions, scrollToBottom]);
+  }, [messages, scrollToBottom]);
 
   // Listen for clear chat session event (triggered by user switch)
   useEffect(() => {
     const handleExternalClear = async () => {
       // Clear local state
       setMessages([]);
-      setToolExecutions(new Map());
-      setStreamingContent("");
       localStorage.removeItem(STORAGE_KEY);
 
       // Reset server-side session
@@ -145,8 +156,6 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
   const handleClearSession = async () => {
     // Clear local state
     setMessages([]);
-    setToolExecutions(new Map());
-    setStreamingContent("");
     localStorage.removeItem(STORAGE_KEY);
 
     // Reset server-side session
@@ -168,17 +177,6 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
-    setToolExecutions(new Map());
-    setStreamingContent("");
-
-    // Track tool executions locally
-    const localToolExecutions = new Map<string, ToolExecution>();
-    // Track current turn state
-    const currentTurn: TurnState = {
-      messageContent: "",
-      messageId: "",
-      toolIds: [],
-    };
 
     try {
       const response = await fetch("/api/chat", {
@@ -199,39 +197,23 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
         throw new Error(data.error || "Failed to get response");
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
+      const data = await response.json();
+      const assistantContent = data.content || "";
+      
+      // Check for dynamic code in the response
+      const dynamicCode = extractDynamicCode(assistantContent);
+      if (dynamicCode && isDynamicMode) {
+        setCurrentCode(dynamicCode);
+        dispatchCodeUpdate(dynamicCode);
       }
 
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let accumulatedContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const event: StreamEvent = JSON.parse(line.slice(6));
-              accumulatedContent = handleStreamEvent(
-                event,
-                accumulatedContent,
-                localToolExecutions,
-                currentTurn
-              );
-            } catch (e) {
-              console.error("Failed to parse SSE event:", e);
-            }
-          }
-        }
-      }
+      // Add assistant message
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: assistantContent,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -241,218 +223,8 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      setToolExecutions(new Map());
-      setStreamingContent("");
     }
   };
-
-  const handleStreamEvent = (
-    event: StreamEvent,
-    accumulatedContent: string,
-    localToolExecutions: Map<string, ToolExecution>,
-    currentTurn: TurnState
-  ): string => {
-    switch (event.type) {
-      case "tool.execution_start": {
-        const toolId = event.data?.tool_call_id || Date.now().toString();
-        const toolName = event.data?.name || "Unknown tool";
-        const toolExecution: ToolExecution = {
-          id: toolId,
-          name: toolName,
-          status: "running",
-          arguments: event.data?.arguments,
-          startTime: event.data?.timestamp,
-        };
-        localToolExecutions.set(toolId, toolExecution);
-        currentTurn.toolIds.push(toolId);
-        setToolExecutions((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(toolId, toolExecution);
-          return newMap;
-        });
-        return accumulatedContent;
-      }
-
-      case "tool.execution_complete": {
-        const toolId = event.data?.tool_call_id || "";
-        const existing = localToolExecutions.get(toolId);
-        if (existing) {
-          const updated: ToolExecution = {
-            ...existing,
-            status: "complete",
-            success: event.data?.success,
-            result: event.data?.result || event.data?.error,
-            endTime: event.data?.timestamp,
-          };
-          localToolExecutions.set(toolId, updated);
-          setToolExecutions((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(toolId, updated);
-            return newMap;
-          });
-        }
-        return accumulatedContent;
-      }
-
-      case "assistant.message_delta": {
-        const delta = event.data?.delta || event.data?.content || "";
-        const newContent = accumulatedContent + delta;
-        setStreamingContent(newContent);
-        return newContent;
-      }
-
-      case "assistant.message": {
-        // Store the message content for this turn - we'll save it on turn_end
-        const content = event.data?.content || accumulatedContent;
-        const messageId = event.data?.message_id || Date.now().toString();
-        currentTurn.messageContent = content;
-        currentTurn.messageId = messageId;
-        // Show the content in streaming display
-        if (content) {
-          setStreamingContent(content);
-        }
-        return content;
-      }
-
-      case "assistant.turn_end": {
-        // Save the completed turn (message + tools that came after it)
-        if (currentTurn.messageContent) {
-          // Check for dynamic code in the message
-          const dynamicCode = extractDynamicCode(currentTurn.messageContent);
-          if (dynamicCode && isDynamicMode) {
-            // Update the code and dispatch event
-            setCurrentCode(dynamicCode);
-            dispatchCodeUpdate(dynamicCode);
-          }
-          
-          // Get tools for this turn
-          const turnTools = currentTurn.toolIds
-            .map((id) => localToolExecutions.get(id))
-            .filter((t): t is ToolExecution => t !== undefined);
-          
-          // Ensure we have a unique message ID
-          const messageId = currentTurn.messageId || `turn-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-          
-          // Batch save both tool executions and assistant message
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            
-            // Add tool executions first
-            if (turnTools.length > 0) {
-              newMessages.push({
-                id: `tools-${messageId}`,
-                role: "event",
-                content: "",
-                toolExecutions: turnTools,
-              });
-            }
-            
-            // Add the assistant message
-            newMessages.push({
-              id: `msg-${messageId}`,
-              role: "assistant",
-              content: currentTurn.messageContent,
-            });
-            
-            return newMessages;
-          });
-        }
-        
-        // Reset for next turn - delay slightly to prevent flash
-        currentTurn.messageContent = "";
-        currentTurn.messageId = "";
-        currentTurn.toolIds = [];
-        
-        // Use setTimeout to allow React to render saved messages before clearing live display
-        setTimeout(() => {
-          setStreamingContent("");
-          setToolExecutions(new Map());
-        }, 50);
-        
-        return "";
-      }
-
-      case "thinking": {
-        // Show thinking indicator (handled by loading state)
-        return accumulatedContent;
-      }
-
-      case "done": {
-        // If there's unsaved content (turn_end wasn't received), save it now
-        if (currentTurn.messageContent) {
-          // Check for dynamic code in the message
-          const dynamicCode = extractDynamicCode(currentTurn.messageContent);
-          if (dynamicCode && isDynamicMode) {
-            setCurrentCode(dynamicCode);
-            dispatchCodeUpdate(dynamicCode);
-          }
-          
-          // Generate unique ID for this final message
-          const finalId = `final-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-          
-          const turnTools = currentTurn.toolIds
-            .map((id) => localToolExecutions.get(id))
-            .filter((t): t is ToolExecution => t !== undefined);
-          
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            
-            if (turnTools.length > 0) {
-              newMessages.push({
-                id: `tools-${finalId}`,
-                role: "event",
-                content: "",
-                toolExecutions: turnTools,
-              });
-            }
-            
-            newMessages.push({
-              id: `msg-${finalId}`,
-              role: "assistant",
-              content: currentTurn.messageContent,
-            });
-            
-            return newMessages;
-          });
-        } else if (event.data?.content) {
-          // Check for dynamic code in fallback content
-          const dynamicCode = extractDynamicCode(event.data.content);
-          if (dynamicCode && isDynamicMode) {
-            setCurrentCode(dynamicCode);
-            dispatchCodeUpdate(dynamicCode);
-          }
-          
-          // Fallback: use content from done event
-          const fallbackId = `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-          setMessages((prev) => [...prev, {
-            id: `msg-${fallbackId}`,
-            role: "assistant",
-            content: event.data!.content!,
-          }]);
-        }
-        
-        setTimeout(() => {
-          setStreamingContent("");
-        }, 50);
-        return "";
-      }
-
-      case "error": {
-        const errorMessage: Message = {
-          id: `error-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          role: "assistant",
-          content: `Error: ${event.data?.message || "Unknown error"}`,
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-        return accumulatedContent;
-      }
-
-      default:
-        return accumulatedContent;
-    }
-  };
-
-  const toolExecutionsList = Array.from(toolExecutions.values());
 
   return (
     <>
@@ -466,10 +238,18 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
 
       {/* Flyout Panel */}
       <div
-        className={`fixed right-0 top-0 z-50 flex h-full w-96 flex-col bg-white shadow-xl transition-transform duration-300 dark:bg-zinc-900 ${
+        ref={flyoutRef}
+        style={{ width: flyoutWidth }}
+        className={`fixed right-0 top-0 z-50 flex h-full flex-col bg-white shadow-xl transition-transform duration-300 dark:bg-zinc-900 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={() => setIsResizing(true)}
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize bg-transparent hover:bg-blue-500/50 active:bg-blue-500"
+        />
+        
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -526,29 +306,7 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
               {messages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
               ))}
-              {/* Show tool executions */}
-              {toolExecutionsList.length > 0 && (
-                <ChatMessage
-                  message={{
-                    id: "tool-executions",
-                    role: "event",
-                    content: "",
-                    toolExecutions: toolExecutionsList,
-                  }}
-                />
-              )}
-              {/* Show streaming content */}
-              {streamingContent && (
-                <ChatMessage
-                  message={{
-                    id: "streaming",
-                    role: "assistant",
-                    content: streamingContent,
-                    isStreaming: true,
-                  }}
-                />
-              )}
-              {isLoading && !streamingContent && toolExecutionsList.length === 0 && (
+              {isLoading && (
                 <div className="flex justify-start mb-3">
                   <div className="bg-zinc-200 dark:bg-zinc-700 rounded-lg px-4 py-2">
                     <div className="flex gap-1">

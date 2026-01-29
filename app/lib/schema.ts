@@ -1,6 +1,8 @@
 /**
- * Schema definitions for the dynamic UI system
- * This tells Copilot what components and APIs are available
+ * Core Schema Definitions for the Dynamic UI System
+ * 
+ * This file contains the CORE component definitions that are always available.
+ * Sample-specific API schemas are loaded dynamically from the samples folder.
  */
 
 export interface ComponentDefinition {
@@ -31,6 +33,9 @@ export interface APIEndpoint {
   };
 }
 
+/**
+ * Core UI Components available to dynamic code
+ */
 export const componentDefinitions: ComponentDefinition[] = [
   {
     name: "Button",
@@ -130,80 +135,11 @@ export const componentDefinitions: ComponentDefinition[] = [
   },
 ];
 
-export const apiEndpoints: APIEndpoint[] = [
-  {
-    path: "/api/todos",
-    method: "GET",
-    description: "Get all todos, optionally filtered by category or due date",
-    parameters: [
-      { name: "category", type: "string", in: "query", required: false, description: "Filter by category (e.g., 'work', 'personal')" },
-      { name: "dueDate", type: "string (ISO date)", in: "query", required: false, description: "Filter by due date" },
-    ],
-    response: {
-      type: "{ todos: Todo[], count: number, categories: string[] }",
-      description: "List of todos with count and available categories",
-    },
-  },
-  {
-    path: "/api/todos",
-    method: "POST",
-    description: "Create a new todo item",
-    parameters: [
-      { name: "title", type: "string", in: "body", required: true, description: "Todo title" },
-      { name: "category", type: "string", in: "body", required: true, description: "Todo category" },
-      { name: "dueDate", type: "string (ISO date)", in: "body", required: false, description: "Due date" },
-    ],
-    response: {
-      type: "{ todo: Todo, message: string }",
-      description: "Created todo item",
-    },
-  },
-  {
-    path: "/api/todos",
-    method: "PATCH",
-    description: "Update a todo item (e.g., mark complete, change title)",
-    parameters: [
-      { name: "id", type: "string", in: "body", required: true, description: "Todo ID" },
-      { name: "title", type: "string", in: "body", required: false, description: "New title" },
-      { name: "completed", type: "boolean", in: "body", required: false, description: "Completion status" },
-      { name: "category", type: "string", in: "body", required: false, description: "New category" },
-    ],
-    response: {
-      type: "{ todo: Todo, message: string }",
-      description: "Updated todo item",
-    },
-  },
-  {
-    path: "/api/todos",
-    method: "DELETE",
-    description: "Delete a todo by ID or all todos in a category",
-    parameters: [
-      { name: "id", type: "string", in: "query", required: false, description: "Todo ID to delete" },
-      { name: "category", type: "string", in: "query", required: false, description: "Delete all in category" },
-    ],
-    response: {
-      type: "{ message: string, deletedCount?: number }",
-      description: "Deletion confirmation",
-    },
-  },
-];
-
-export const todoInterface = `
-interface Todo {
-  id: string;
-  title: string;
-  category: string;
-  dueDate: string; // ISO date string
-  completed: boolean;
-  createdAt: string;
-}
-`;
-
 /**
- * Generate the schema documentation for Copilot context
+ * Generate the core component documentation for Copilot context
  */
-export function generateSchemaDocumentation(): string {
-  let doc = "## Available Components\n\n";
+export function generateComponentDocumentation(): string {
+  let doc = "## Available UI Components\n\n";
 
   for (const comp of componentDefinitions) {
     doc += `### ${comp.name}\n`;
@@ -215,21 +151,27 @@ export function generateSchemaDocumentation(): string {
     doc += "\n";
   }
 
-  doc += "## Available API Endpoints\n\n";
+  return doc;
+}
 
-  for (const api of apiEndpoints) {
-    doc += `### ${api.method} ${api.path}\n`;
-    doc += `${api.description}\n\n`;
-    if (api.parameters && api.parameters.length > 0) {
-      doc += "Parameters:\n";
-      for (const param of api.parameters) {
-        doc += `- \`${param.name}\` (${param.in}): ${param.type}${param.required ? " (required)" : ""} - ${param.description}\n`;
-      }
-    }
-    doc += `\nResponse: ${api.response.type}\n\n`;
+/**
+ * Generate combined schema documentation (components + sample APIs)
+ * @param sampleApiDoc - API documentation from the active sample
+ * @param sampleDataTypes - Data type definitions from the active sample
+ */
+export function generateSchemaDocumentation(
+  sampleApiDoc?: string,
+  sampleDataTypes?: string
+): string {
+  let doc = generateComponentDocumentation();
+
+  if (sampleApiDoc) {
+    doc += sampleApiDoc;
   }
 
-  doc += "## Data Types\n\n```typescript\n" + todoInterface + "```\n";
+  if (sampleDataTypes) {
+    doc += "\n## Data Types\n\n```typescript\n" + sampleDataTypes + "```\n";
+  }
 
   return doc;
 }

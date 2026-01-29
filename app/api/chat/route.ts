@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CopilotClient, CopilotSession, SessionEvent } from "@github/copilot-sdk";
+import { CopilotClient, CopilotSession } from "@github/copilot-sdk";
 import { generateSchemaDocumentation } from "@/app/lib/schema";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-}
-
-interface StreamEvent {
-  type: string;
-  data?: unknown;
 }
 
 let client: CopilotClient | null = null;
@@ -25,7 +20,9 @@ async function getSession(): Promise<CopilotSession> {
   }
   if (!session) {
     console.log("[Copilot SDK] Creating new session with model: claude-sonnet-4");
-    session = await client.createSession({ model: "claude-sonnet-4" });
+    session = await client.createSession({ 
+      model: "claude-sonnet-4"
+    });
     console.log("[Copilot SDK] Session created successfully");
   }
   return session;
@@ -100,120 +97,18 @@ After the code, briefly explain what you changed.
 
     console.log(`[Copilot API][${requestId}] Sending prompt: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}"`);;
 
-    // Create a stream for SSE
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = (event: StreamEvent) => {
-          const data = `data: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-        };
+    // Use sendAndWait for a simple request/response flow
+    const response = await currentSession.sendAndWait({ prompt });
+    
+    // Extract content from the response - sendAndWait returns an event with data.content
+    const content = response?.data?.content || "";
+    const messageId = response?.data?.messageId || "";
+    
+    console.log(`[Copilot API][${requestId}] Got response: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
 
-        // Set up single event handler that filters by type
-        const unsubscribe = currentSession.on((event: SessionEvent) => {
-          console.log(`[Copilot API][${requestId}] Event: ${event.type}`);
-          
-          // Forward relevant events to the client
-          switch (event.type) {
-            case "tool.execution_start":
-              sendEvent({
-                type: "tool.execution_start",
-                data: {
-                  tool_call_id: event.data.toolCallId,
-                  name: event.data.toolName,
-                  arguments: event.data.arguments,
-                  timestamp: event.timestamp,
-                },
-              });
-              break;
-            case "tool.execution_complete":
-              sendEvent({
-                type: "tool.execution_complete",
-                data: {
-                  tool_call_id: event.data.toolCallId,
-                  success: event.data.success,
-                  result: event.data.result?.content,
-                  error: event.data.error?.message,
-                  timestamp: event.timestamp,
-                },
-              });
-              break;
-            case "assistant.message_delta":
-              sendEvent({
-                type: "assistant.message_delta",
-                data: {
-                  delta: event.data.deltaContent,
-                  message_id: event.data.messageId,
-                },
-              });
-              break;
-            case "assistant.message":
-              sendEvent({
-                type: "assistant.message",
-                data: {
-                  content: event.data.content,
-                  message_id: event.data.messageId,
-                },
-              });
-              break;
-            case "assistant.turn_end":
-              sendEvent({
-                type: "assistant.turn_end",
-                data: {
-                  turn_id: event.data.turnId,
-                },
-              });
-              break;
-            case "assistant.intent":
-              sendEvent({
-                type: "thinking",
-                data: {
-                  intent: event.data.intent,
-                },
-              });
-              break;
-            case "session.error":
-              sendEvent({
-                type: "error",
-                data: {
-                  message: event.data.message,
-                },
-              });
-              break;
-          }
-        });
-
-        try {
-          // Use a longer timeout (5 minutes) for complex requests
-          const response = await currentSession.sendAndWait({
-            prompt: prompt,
-          }, 300000);
-
-          // Send final response
-          const content = response?.data?.content || (response ? String(response) : "No response received");
-          sendEvent({ type: "done", data: { content } });
-        } catch (error) {
-          console.error(`[Copilot API][${requestId}] Error:`, error);
-          sendEvent({
-            type: "error",
-            data: { message: error instanceof Error ? error.message : "Unknown error" },
-          });
-          // Reset session on error
-          session = null;
-        } finally {
-          // Clean up event listener
-          unsubscribe();
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+    return NextResponse.json({
+      content,
+      messageId,
     });
   } catch (error) {
     console.error(`[Copilot API][${requestId}] Error:`, error);

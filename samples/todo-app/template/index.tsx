@@ -21,8 +21,8 @@ export default function TodoApp() {
     setLoading(true);
     try {
       const url = filterCategory 
-        ? `/api/todos?category=${filterCategory}`
-        : "/api/todos";
+        ? `/api/samples/todos?category=${filterCategory}`
+        : "/api/samples/todos";
       const data = await fetchAPI(url);
       setTodos(data.todos || []);
       setCategories(data.categories || []);
@@ -35,7 +35,7 @@ export default function TodoApp() {
   const addTodo = async () => {
     if (!newTitle.trim() || !newCategory.trim()) return;
     
-    await fetchAPI("/api/todos", {
+    await fetchAPI("/api/samples/todos", {
       method: "POST",
       body: { title: newTitle, category: newCategory }
     });
@@ -46,7 +46,7 @@ export default function TodoApp() {
   };
 
   const toggleTodo = async (id, completed) => {
-    await fetchAPI("/api/todos", {
+    await fetchAPI("/api/samples/todos", {
       method: "PATCH",
       body: { id, completed: !completed }
     });
@@ -54,7 +54,7 @@ export default function TodoApp() {
   };
 
   const deleteTodo = async (id) => {
-    await fetchAPI(`/api/todos?id=${id}`, { method: "DELETE" });
+    await fetchAPI(`/api/samples/todos?id=${id}`, { method: "DELETE" });
     loadTodos();
   };
 

@@ -63,16 +63,17 @@ export class FileSystemStorageProvider implements StorageProvider {
   private templateDir: string;
   private usersFile: string;
 
-  constructor() {
+  constructor(sampleName: string = "todo-app") {
     this.baseDir = path.join(process.cwd(), ".user-data");
-    this.templateDir = path.join(process.cwd(), "app", "templates", "default");
+    // Templates now live in the samples folder
+    this.templateDir = path.join(process.cwd(), "samples", sampleName, "template");
     this.usersFile = path.join(this.baseDir, "users.json");
   }
 
   private async ensureDir(dir: string): Promise<void> {
     try {
       await fs.mkdir(dir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Directory might already exist
     }
   }

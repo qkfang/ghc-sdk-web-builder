@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
-// In-memory store (replace with database in production)
+/**
+ * Todo API - Sample Application
+ * 
+ * This is a sample API for the Dynamic UI Demo framework.
+ * Location: /api/samples/todos
+ */
+
 export interface Todo {
   id: string;
   title: string;
   category: string;
-  dueDate: string; // ISO date string
+  dueDate: string;
   completed: boolean;
   createdAt: string;
 }
 
-// Global store - in production this would be a database
+// In-memory store (replace with database in production)
 const todos: Map<string, Todo> = new Map();
 
 // Seed some initial data
@@ -38,7 +44,7 @@ const seedData = () => {
 
 seedData();
 
-// GET /api/todos - Get todos (optionally filter by category or dueDate)
+// GET /api/samples/todos - Get todos (optionally filter by category or dueDate)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
@@ -51,7 +57,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (dueDate) {
-    // Match todos due on the specified date (comparing date part only)
     const targetDate = new Date(dueDate).toDateString();
     result = result.filter((todo) => new Date(todo.dueDate).toDateString() === targetDate);
   }
@@ -66,7 +71,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST /api/todos - Create a new todo
+// POST /api/samples/todos - Create a new todo
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -96,14 +101,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/todos - Delete todos by category
+// DELETE /api/samples/todos - Delete todos
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
   const id = searchParams.get("id");
 
   if (id) {
-    // Delete single todo by ID
     if (todos.has(id)) {
       todos.delete(id);
       return NextResponse.json({ message: "Todo deleted successfully" });
@@ -112,7 +116,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   if (category) {
-    // Delete all todos in category
     let deletedCount = 0;
     for (const [todoId, todo] of todos.entries()) {
       if (todo.category.toLowerCase() === category.toLowerCase()) {
@@ -132,7 +135,7 @@ export async function DELETE(request: NextRequest) {
   );
 }
 
-// PATCH /api/todos - Update a todo (toggle complete, update title, etc.)
+// PATCH /api/samples/todos - Update a todo
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
@@ -147,12 +150,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Todo not found" }, { status: 404 });
     }
 
-    // Apply updates
     const updatedTodo: Todo = {
       ...todo,
       ...updates,
-      id: todo.id, // Prevent ID from being changed
-      createdAt: todo.createdAt, // Prevent createdAt from being changed
+      id: todo.id,
+      createdAt: todo.createdAt,
     };
 
     todos.set(id, updatedTodo);

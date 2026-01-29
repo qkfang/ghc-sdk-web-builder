@@ -6,10 +6,19 @@ This document provides guidance for AI agents working on this codebase.
 
 This is a **demonstration application** for the GitHub Copilot SDK. It showcases how to build AI-powered, dynamically updating user interfaces where users can modify the UI through natural language chat.
 
-### Core Concept
+### Core Concept: Two-Layer Architecture
 
-- **Fixed Layer**: API routes and infrastructure are stable and rarely change
-- **Dynamic Layer**: UI code is generated/modified at runtime via Copilot
+The codebase is split into two distinct layers:
+
+| Layer | Location | Stability | Purpose |
+|-------|----------|-----------|----------|
+| **Core Framework** | `app/` | Stable | Provides the dynamic UI engine, chat integration, compilation, and UI primitives |
+| **Sample Applications** | `samples/` | Swappable | Contains demo apps that showcase the framework - can be replaced without touching core |
+
+This separation means:
+- Adding a new sample app requires minimal changes to core code
+- Core UI components and utilities are shared across all samples
+- Each sample defines its own API schema and default template
 
 ## Code Philosophy
 
@@ -33,40 +42,57 @@ This is a **demonstration and teaching codebase**. Prioritize:
 ## Project Structure
 
 ```
-app/
-├── api/           # Backend API routes (Next.js App Router)
-├── components/    # React UI components
-├── contexts/      # React context providers
-├── lib/           # Utility libraries and helpers
-├── templates/     # Default code templates for new users
-├── layout.tsx     # Root layout
-└── page.tsx       # Main page (dynamic UI host)
+├── app/                    # CORE FRAMEWORK (fixed)
+│   ├── api/               
+│   │   ├── chat/          # Copilot chat endpoint
+│   │   ├── code/          # User code storage
+│   │   ├── schema/        # Schema endpoint (merges core + sample)
+│   │   ├── user/          # User management
+│   │   └── samples/       # Sample app APIs (e.g., todos)
+│   ├── components/        # React UI components
+│   ├── contexts/          # React context providers
+│   ├── lib/               # Core utilities
+│   │   ├── compiler.ts    # Sucrase compilation
+│   │   ├── component-scope.ts # Available UI components
+│   │   ├── schema.ts      # Core component schemas
+│   │   └── storage.ts     # Storage abstraction
+│   ├── layout.tsx
+│   └── page.tsx
+│
+└── samples/                # SAMPLE APPLICATIONS (swappable)
+    └── todo-app/
+        ├── template/      # Default code template
+        │   ├── index.tsx  # Main UI (runtime compiled)
+        │   └── manifest.json
+        ├── schema.ts      # Sample-specific API schema
+        └── README.md
 ```
 
-### Key Files
+### Key Separation
 
-| File | Purpose |
-|------|---------|
-| `app/lib/compiler.ts` | In-browser TypeScript/JSX compilation using Sucrase |
-| `app/lib/component-scope.ts` | UI components available to dynamic code |
-| `app/lib/schema.ts` | Schema definitions sent to Copilot for context |
-| `app/lib/storage.ts` | Storage abstraction (file-system, extensible) |
-| `app/components/DynamicRenderer.tsx` | Compiles and renders user code |
-| `app/components/ChatFlyout.tsx` | Chat interface with Copilot |
-| `app/api/chat/route.ts` | Copilot API integration endpoint |
-| `app/templates/default/index.tsx` | Default starter template |
+| Location | Purpose | Modify when... |
+|----------|---------|----------------|
+| `app/lib/` | Core components & utilities | Adding new UI primitives |
+| `app/api/samples/` | Sample app APIs | Adding/changing sample features |
+| `samples/*/template/` | Default user code | Changing starter template |
+| `samples/*/schema.ts` | Sample API documentation | Adding sample endpoints |
 
 ## API Routes
 
-All API routes are in `app/api/` using Next.js App Router conventions:
+Core routes (in `app/api/`):
 
 | Route | Methods | Purpose |
 |-------|---------|---------|
 | `/api/chat` | POST, DELETE | Copilot chat streaming |
 | `/api/code` | GET, POST, DELETE, PUT | User code CRUD |
 | `/api/schema` | GET | Component/API schema for Copilot |
-| `/api/todos` | GET, POST, PATCH, DELETE | Sample Todo API |
 | `/api/user` | GET, POST, PATCH | User management |
+
+Sample routes (in `app/api/samples/`):
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `/api/samples/todos` | GET, POST, PATCH, DELETE | Todo app API |
 
 ## Component Scope
 
@@ -79,6 +105,20 @@ When modifying `app/lib/component-scope.ts`, remember:
 5. Update `app/lib/schema.ts` when adding components
 
 Current components: `Button`, `Card`, `Input`, `Select`, `Checkbox`, `Badge`, `List`, `ListItem`, `Header`, `Spinner`, `Flex`, `fetchAPI`
+
+## Schema System
+
+Schemas are split between core and sample:
+
+| Schema | Location | Contents |
+|--------|----------|----------|
+| **Core** | `app/lib/schema.ts` | UI components, props, React hooks |
+| **Sample** | `samples/todo-app/schema.ts` | API endpoints, data models |
+
+The `/api/schema/route.ts` **merges both schemas** when providing context to Copilot. This allows:
+- Core components to be reused across samples
+- Each sample to define its own API documentation
+- Clean separation between framework and application
 
 ## Storage System
 
@@ -99,14 +139,32 @@ Currently uses `FileSystemStorageProvider`. The interface is designed to support
 
 User data is stored in `.user-data/{userId}/`.
 
-## Template System
+## Sample System
 
-Default templates live in `app/templates/default/`:
+Sample applications live in `samples/`:
 
-- `manifest.json` - Template metadata (name, entrypoint, files list)
-- `index.tsx` - Main template file (has `@ts-nocheck` as it's runtime-compiled)
+```
+samples/
+└── todo-app/
+    ├── template/
+    │   ├── index.tsx      # Default UI (has @ts-nocheck)
+    │   └── manifest.json  # Template metadata
+    ├── schema.ts          # API schema for this sample
+    └── README.md
+```
 
-To add multi-file templates, update both the files and `manifest.json`.
+### Creating a New Sample
+
+1. Create `samples/your-app/` with template/, schema.ts, README.md
+2. Add API routes to `app/api/samples/your-endpoint/`
+3. Update `app/lib/storage.ts` constructor to use your sample
+4. Update `app/api/schema/route.ts` to import your schema
+
+### Modifying the Todo Sample
+
+1. Edit `samples/todo-app/template/index.tsx` for UI changes
+2. Edit `app/api/samples/todos/route.ts` for API changes
+3. Update `samples/todo-app/schema.ts` when adding endpoints
 
 ## Dynamic Code Compilation
 
@@ -123,10 +181,10 @@ The compilation flow:
 
 The chat system (`ChatFlyout.tsx`) handles:
 
-1. Streaming responses from Copilot via Server-Sent Events
+1. Sending prompts to the Copilot API via `sendAndWait`
 2. Extracting code from `<dynamic-code>` tags in responses
 3. Dispatching `dynamic-code-update` events for the renderer
-4. Tool execution display (when Copilot uses tools)
+4. Persisting chat history to localStorage
 
 ## Event System
 
@@ -148,13 +206,13 @@ Custom events for cross-component communication:
 
 ### Adding a New API Endpoint
 
-1. Create `app/api/[name]/route.ts`
+1. Create `app/api/samples/[name]/route.ts`
 2. Implement handlers (GET, POST, etc.)
-3. Add to schema in `app/lib/schema.ts`
+3. Add to schema in `samples/[sample]/schema.ts`
 
 ### Modifying the Default Template
 
-1. Edit `app/templates/default/index.tsx`
+1. Edit `samples/todo-app/template/index.tsx`
 2. Keep `@ts-nocheck` at top (runtime-compiled code)
 3. Only use components from `componentScope`
 

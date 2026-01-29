@@ -6,10 +6,20 @@ A demonstration application showcasing the **GitHub Copilot SDK** for building A
 
 ## Overview
 
-This application demonstrates a hybrid architecture where:
+This application demonstrates a **two-layer architecture** that cleanly separates concerns:
 
-- **Fixed Components**: API routes and core infrastructure remain stable
-- **Dynamic Components**: UI elements can be modified in real-time via chat
+### Core Framework (`app/`)
+Stable infrastructure that powers the dynamic UI system:
+- Chat integration with GitHub Copilot
+- In-browser TypeScript compilation
+- User management and storage
+- Sandboxed UI component library
+
+### Sample Applications (`samples/`)
+Swappable demo apps that showcase the framework:
+- UI templates (what users can modify)
+- Sample-specific API schemas
+- Self-contained and easily replaceable
 
 Users interact with GitHub Copilot through a chat interface to request UI changes like "make the header blue" or "add a priority field to todos". Copilot generates new React/TypeScript code that is compiled and rendered instantly in the browser.
 
@@ -66,44 +76,55 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Project Structure
 
 ```
-app/
-├── api/                    # Backend API routes (fixed)
-│   ├── chat/              # Copilot chat endpoint
-│   │   └── route.ts       # Streaming chat with code generation
-│   ├── code/              # User code storage CRUD
-│   │   └── route.ts       # GET/POST/DELETE/PUT for code bundles
-│   ├── schema/            # Component schema for Copilot context
-│   │   └── route.ts       # Returns available components/APIs
-│   ├── todos/             # Sample Todo API
-│   │   └── route.ts       # CRUD operations for todos
-│   └── user/              # User management
-│       └── route.ts       # User CRUD operations
+├── app/                    # CORE FRAMEWORK (fixed)
+│   ├── api/               
+│   │   ├── chat/          # Copilot chat endpoint
+│   │   ├── code/          # User code storage CRUD
+│   │   ├── schema/        # Component schema (merges core + sample)
+│   │   ├── user/          # User management
+│   │   └── samples/       # Sample app APIs
+│   │       └── todos/     # Todo sample API
+│   │
+│   ├── components/        # React UI components
+│   │   ├── ChatFlyout.tsx
+│   │   ├── DynamicRenderer.tsx
+│   │   └── UserProfile.tsx
+│   │
+│   ├── contexts/          # React contexts
+│   │   └── UserContext.tsx
+│   │
+│   ├── lib/               # Core utilities
+│   │   ├── compiler.ts    # Sucrase-based compiler
+│   │   ├── component-scope.ts # UI components for dynamic code
+│   │   ├── schema.ts      # Core component schemas
+│   │   └── storage.ts     # Storage abstraction
+│   │
+│   ├── layout.tsx
+│   └── page.tsx
 │
-├── components/            # React components
-│   ├── ChatFlyout.tsx     # Chat interface with Copilot
-│   ├── ChatInput.tsx      # Message input component
-│   ├── ChatMessage.tsx    # Message display with syntax highlighting
-│   ├── ChatToggleButton.tsx # Floating chat button
-│   ├── DynamicRenderer.tsx # Runtime code compilation & rendering
-│   └── UserProfile.tsx    # User profile dropdown
-│
-├── contexts/              # React contexts
-│   └── UserContext.tsx    # User state management
-│
-├── lib/                   # Utility libraries
-│   ├── compiler.ts        # Sucrase-based TypeScript/JSX compiler
-│   ├── component-scope.ts # UI components available to dynamic code
-│   ├── schema.ts          # Schema definitions for Copilot
-│   └── storage.ts         # File-system storage abstraction
-│
-├── templates/             # Default code templates
-│   └── default/
-│       ├── index.tsx      # Default Todo app template
-│       └── manifest.json  # Template metadata
-│
-├── layout.tsx             # Root layout with providers
-└── page.tsx               # Main dynamic UI page
+└── samples/                # SAMPLE APPLICATIONS (swappable)
+    └── todo-app/
+        ├── template/      # Default UI code
+        │   ├── index.tsx
+        │   └── manifest.json
+        ├── schema.ts      # Sample API schema
+        └── README.md
 ```
+
+### Core vs Sample Separation
+
+This architecture makes it easy to create new sample applications without touching the core framework.
+
+| Layer | Location | Contains | Modify when... |
+|-------|----------|----------|----------------|
+| **Core** | `app/lib/schema.ts` | UI component definitions | Adding new UI primitives |
+| **Core** | `app/lib/component-scope.ts` | Sandboxed components | Implementing new components |
+| **Core** | `app/api/` | Framework APIs (chat, code, user) | Changing framework behavior |
+| **Sample** | `samples/*/schema.ts` | API endpoint documentation | Adding sample-specific APIs |
+| **Sample** | `samples/*/template/` | Default user code | Changing starter UI |
+| **Sample** | `app/api/samples/*/` | Sample API implementations | Adding sample endpoints |
+
+The `/api/schema` endpoint automatically merges core component schemas with sample API schemas, providing Copilot with complete context.
 
 ## Architecture
 
@@ -134,12 +155,21 @@ Dynamic code has access to a sandboxed set of UI components:
 | `Flex` | Flexbox layout helper |
 | `fetchAPI` | Fetch wrapper for API calls |
 
-### API Schema
+### Schema System
 
-The `/api/schema` endpoint provides Copilot with context about:
-- Available UI components and their props
-- API endpoints and their request/response formats
-- Current code structure
+The `/api/schema` endpoint **merges two schema sources**:
+
+1. **Core Schema** (`app/lib/schema.ts`)
+   - UI components available to dynamic code
+   - Component props and types
+   - React hooks (useState, useEffect, etc.)
+
+2. **Sample Schema** (`samples/todo-app/schema.ts`)
+   - Sample-specific API endpoints
+   - Request/response formats
+   - Data models
+
+This separation allows you to swap sample applications without modifying core framework code.
 
 ## Enhancing the Starter App
 
@@ -181,13 +211,13 @@ export const componentScope = {
 
 ### Adding New API Endpoints
 
-1. Create a new route in `app/api/your-endpoint/route.ts`
+1. Create a new route in `app/api/samples/your-endpoint/route.ts`
 
-2. Add the endpoint to the schema in `app/lib/schema.ts`:
+2. Add the endpoint to the sample schema in `samples/todo-app/schema.ts`:
 
 ```tsx
 {
-  path: "/api/your-endpoint",
+  path: "/api/samples/your-endpoint",
   method: "GET",
   description: "What this endpoint does",
   response: { /* response shape */ },
@@ -196,12 +226,12 @@ export const componentScope = {
 
 ### Modifying the Default Template
 
-Edit `app/templates/default/index.tsx` to change what users see initially. This template is loaded for new users or when they reset.
+Edit `samples/todo-app/template/index.tsx` to change what users see initially. This template is loaded for new users or when they reset.
 
 ### Adding Multiple Files to Templates
 
-1. Add new files to `app/templates/default/`
-2. Update `app/templates/default/manifest.json`:
+1. Add new files to `samples/todo-app/template/`
+2. Update `samples/todo-app/template/manifest.json`:
 
 ```json
 {
@@ -211,6 +241,13 @@ Edit `app/templates/default/index.tsx` to change what users see initially. This 
   "files": ["index.tsx", "components.tsx", "utils.ts"]
 }
 ```
+
+### Creating a New Sample Application
+
+1. Create `samples/your-app/` with template/, schema.ts, README.md
+2. Add API routes to `app/api/samples/your-endpoint/`
+3. Update `app/lib/storage.ts` constructor to use your sample name
+4. Update `app/api/schema/route.ts` to import your schema
 
 ## Storage
 

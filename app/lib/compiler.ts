@@ -93,6 +93,7 @@ export function compileToComponent(
 
     // Execute with scope
     const exports: Record<string, unknown> = {};
+    // eslint-disable-next-line @next/next/no-assign-module-variable
     const module = { exports };
     const Component = factory(
       scope.React,

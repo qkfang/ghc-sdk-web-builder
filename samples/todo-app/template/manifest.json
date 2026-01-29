@@ -3,5 +3,6 @@
   "version": "1.0.0",
   "description": "A simple todo application with categories",
   "entrypoint": "index.tsx",
-  "files": ["index.tsx"]
+  "files": ["index.tsx"],
+  "apiBasePath": "/api/samples/todos"
 }

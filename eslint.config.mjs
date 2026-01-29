@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Sample templates are runtime-compiled and use components from scope
+    "samples/**/template/**",
+    // User-generated code is also runtime-compiled
+    ".user-data/**",
   ]),
 ]);
 
