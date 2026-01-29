@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import ChatMessage, { Message } from "./ChatMessage";
 import ChatInput, { ImageAttachment } from "./ChatInput";
+import { CopilotIcon } from "./CopilotIcon";
 import { useUser } from "../contexts/UserContext";
 
 const STORAGE_KEY = "chat-messages";
@@ -265,7 +266,7 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Copilot Chat
+            Customize with Copilot
           </h2>
           <div className="flex items-center gap-1">
             <button
@@ -310,8 +311,9 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 && !isLoading ? (
-            <div className="flex h-full items-center justify-center text-center text-zinc-500 dark:text-zinc-400">
-              <p>Start a conversation with Copilot</p>
+            <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 dark:text-zinc-400">
+              <CopilotIcon className="w-16 h-16 mb-4 opacity-50" />
+              <p>Chat with Copilot to customize this application</p>
             </div>
           ) : (
             <>

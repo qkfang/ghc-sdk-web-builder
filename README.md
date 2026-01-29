@@ -69,7 +69,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### 4. Start Chatting
 
-1. Click the **"Chat with Copilot"** button in the bottom-right corner
+1. Click the **"Customize with Copilot"** button in the bottom-right corner
 2. Ask Copilot to modify the UI (e.g., "Add a dark mode toggle")
 3. Watch the UI update instantly!
 

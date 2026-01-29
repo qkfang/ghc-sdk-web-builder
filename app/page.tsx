@@ -5,8 +5,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import DynamicRenderer from "./components/DynamicRenderer";
 import ChatFlyout from "./components/ChatFlyout";
-import ChatToggleButton from "./components/ChatToggleButton";
 import UserProfile from "./components/UserProfile";
+import { CopilotIcon } from "./components/CopilotIcon";
 import { useUser } from "./contexts/UserContext";
 
 // Helper to get language from filename
@@ -36,6 +36,16 @@ export default function Home() {
   const [showCode, setShowCode] = useState(false);
   const [version, setVersion] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [sampleName, setSampleName] = useState<string>("");
+  const [showHowTo, setShowHowTo] = useState(false);
+
+  // Fetch sample name on mount
+  useEffect(() => {
+    fetch("/api/schema")
+      .then((res) => res.json())
+      .then((data) => setSampleName(data.sample || ""))
+      .catch(() => {});
+  }, []);
 
   // Load code when user changes
   useEffect(() => {
@@ -149,14 +159,32 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Dynamic UI Demo
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Dynamic UI Demo
+                </h1>
+                {sampleName && (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full">
+                    {sampleName}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Chat with Copilot to modify this UI • Version {version}
+                Chat with Copilot to customize this UI • Version {version}
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowHowTo(!showHowTo)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  showHowTo
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                    : "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                }`}
+              >
+                How to Use
+              </button>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
               <button
                 onClick={() => setShowCode(!showCode)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
@@ -174,9 +202,35 @@ export default function Home() {
                 Reset
               </button>
               <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+              <button
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                  isChatOpen
+                    ? "bg-green-600 text-white"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                }`}
+              >
+                <CopilotIcon className="w-4 h-4" />
+                {isChatOpen ? "Close Chat" : "Customize with Copilot"}
+              </button>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
               <UserProfile />
             </div>
           </div>
+
+          {/* How to Use - Expandable Section */}
+          {showHowTo && (
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                <li>• Click <strong>&quot;Chat with Copilot&quot;</strong> above to open the chat panel</li>
+                <li>• Ask Copilot to modify the UI (e.g., &quot;Make the header blue&quot;, &quot;Add a priority field&quot;)</li>
+                <li>• Copilot will generate new code and apply it instantly</li>
+                <li>• Use <strong>&quot;Show Code&quot;</strong> to see the current source</li>
+                <li>• Use <strong>&quot;Reset&quot;</strong> to go back to the default UI</li>
+                <li>• You can also paste images into the chat for Copilot to analyze</li>
+              </ul>
+            </div>
+          )}
         </div>
       </header>
 
@@ -239,27 +293,9 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        {/* Instructions */}
-        <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-          <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
-            How to Use
-          </h2>
-          <ul className="space-y-2 text-blue-800 dark:text-blue-200">
-            <li>• Click the <strong>&quot;Chat with Copilot&quot;</strong> button in the bottom right</li>
-            <li>• Ask Copilot to modify the UI (e.g., &quot;Make the header blue&quot;, &quot;Add a priority field to todos&quot;)</li>
-            <li>• Copilot will generate new code and apply it instantly</li>
-            <li>• Use &quot;Show Code&quot; to see the current source</li>
-            <li>• Use &quot;Reset&quot; to go back to the default UI</li>
-          </ul>
-        </div>
       </main>
 
-      {/* Floating Chat Button & Flyout */}
-      <ChatToggleButton
-        isOpen={isChatOpen}
-        onClick={() => setIsChatOpen(true)}
-      />
+      {/* Chat Flyout */}
       <ChatFlyout isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
