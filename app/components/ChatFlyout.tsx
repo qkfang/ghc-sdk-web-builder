@@ -241,19 +241,11 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
 
   return (
     <>
-      {/* Backdrop - starts below header */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 top-[73px] z-40 bg-black/20"
-          onClick={onClose}
-        />
-      )}
-
       {/* Flyout Panel - positioned below header */}
       <div
         ref={flyoutRef}
         style={{ width: flyoutWidth }}
-        className={`fixed right-0 top-[73px] z-50 flex h-[calc(100vh-73px)] flex-col bg-slate-800 shadow-xl transition-transform duration-300 ${
+        className={`fixed right-0 top-[80px] z-50 flex h-[calc(100vh-77px)] flex-col bg-slate-800 border-l border-t border-slate-600/50 shadow-xl transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -263,11 +255,11 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
           className="absolute left-0 top-0 h-full w-1 cursor-ew-resize bg-transparent hover:bg-green-500/50 active:bg-green-500"
         />
         
-        {/* Minimal Header - matches main app header style */}
-        <div className="flex items-center justify-between bg-slate-900 border-b border-slate-700 px-4 py-3">
+        {/* Minimal Header - h-8 (32px) to match main content py-8 top padding */}
+        <div className="flex items-center justify-between bg-slate-900 px-4 h-8">
           <div className="flex items-center gap-2">
-            <CopilotIcon className="w-5 h-5 text-green-400" />
-            <h2 className="text-sm font-medium text-gray-200">
+            <CopilotIcon className="w-4 h-4 text-green-400" />
+            <h2 className="text-xs font-medium text-gray-200">
               Copilot Chat
             </h2>
           </div>
@@ -275,7 +267,7 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
             onClick={handleClearSession}
             disabled={isLoading}
             title="Start new session"
-            className="text-xs px-2 py-1 rounded text-gray-400 hover:text-gray-200 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+            className="text-xs px-2 py-0.5 rounded text-gray-400 hover:text-gray-200 hover:bg-slate-700 disabled:opacity-50 transition-colors"
           >
             New Session
           </button>
