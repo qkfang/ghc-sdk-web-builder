@@ -91,6 +91,7 @@ export interface Message {
   eventType?: string;
   toolExecutions?: ToolExecution[];
   isStreaming?: boolean;
+  imageAttachments?: string[]; // Data URLs for image previews
 }
 
 interface ChatMessageProps {
@@ -203,7 +204,21 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         }`}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+          <div>
+            {message.imageAttachments && message.imageAttachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {message.imageAttachments.map((src, idx) => (
+                  <img
+                    key={idx}
+                    src={src}
+                    alt={`Attached image ${idx + 1}`}
+                    className="max-h-32 rounded-lg border border-blue-400/50"
+                  />
+                ))}
+              </div>
+            )}
+            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+          </div>
         ) : (
           <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <ReactMarkdown

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import ChatMessage, { Message } from "./ChatMessage";
-import ChatInput from "./ChatInput";
+import ChatInput, { ImageAttachment } from "./ChatInput";
 import { useUser } from "../contexts/UserContext";
 
 const STORAGE_KEY = "chat-messages";
@@ -168,11 +168,18 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
     }
   };
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, images: ImageAttachment[]) => {
+    // Build display content - show that images were attached
+    const displayContent = images.length > 0 
+      ? `${content}${content ? '\n\n' : ''}[${images.length} image${images.length > 1 ? 's' : ''} attached]`
+      : content;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content,
+      content: displayContent,
+      // Store image previews for display in chat
+      imageAttachments: images.map(img => img.preview),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -189,6 +196,11 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
           })),
           dynamicMode: isDynamicMode,
           currentCode: isDynamicMode ? currentCode : undefined,
+          // Send image data to API
+          images: images.map(img => ({
+            base64: img.base64,
+            mimeType: img.mimeType,
+          })),
         }),
       });
 

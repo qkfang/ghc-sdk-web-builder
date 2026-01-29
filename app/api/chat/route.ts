@@ -1,14 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CopilotClient, CopilotSession } from "@github/copilot-sdk";
 import { generateSchemaDocumentation } from "@/app/lib/schema";
+import { writeFile, unlink, readdir, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import { randomUUID } from "crypto";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+interface ImageData {
+  base64: string;
+  mimeType: string;
+}
+
+// Track temp files for cleanup
+const TEMP_PREFIX = "copilot-img-";
+let tempImagePaths: string[] = [];
+
+/**
+ * Save base64 image to temp file and return the path
+ */
+async function saveImageToTemp(image: ImageData): Promise<string> {
+  // Determine file extension from mime type
+  const ext = image.mimeType.split("/")[1] || "png";
+  const filename = `${TEMP_PREFIX}${randomUUID()}.${ext}`;
+  const tempPath = join(tmpdir(), filename);
+  
+  await writeFile(tempPath, Buffer.from(image.base64, "base64"));
+  tempImagePaths.push(tempPath);
+  
+  console.log(`[Copilot API] Saved temp image: ${tempPath}`);
+  return tempPath;
+}
+
+/**
+ * Clean up all tracked temp image files
+ */
+async function cleanupTempImages(): Promise<void> {
+  console.log(`[Copilot API] Cleaning up ${tempImagePaths.length} temp images`);
+  
+  for (const path of tempImagePaths) {
+    try {
+      await unlink(path);
+      console.log(`[Copilot API] Deleted temp image: ${path}`);
+    } catch (error) {
+      // File may already be deleted, ignore
+    }
+  }
+  tempImagePaths = [];
+  
+  // Also clean up any orphaned temp files from previous sessions
+  try {
+    const tempDir = tmpdir();
+    const files = await readdir(tempDir);
+    for (const file of files) {
+      if (file.startsWith(TEMP_PREFIX)) {
+        try {
+          await unlink(join(tempDir, file));
+          console.log(`[Copilot API] Cleaned up orphaned temp file: ${file}`);
+        } catch {
+          // Ignore errors
+        }
+      }
+    }
+  } catch {
+    // Ignore errors reading temp dir
+  }
+}
+
 let client: CopilotClient | null = null;
 let session: CopilotSession | null = null;
+let eventUnsubscribe: (() => void) | null = null;
 
 async function getSession(): Promise<CopilotSession> {
   if (!client) {
@@ -24,6 +89,46 @@ async function getSession(): Promise<CopilotSession> {
       model: "claude-sonnet-4"
     });
     console.log("[Copilot SDK] Session created successfully");
+    
+    // Subscribe to session events for logging
+    eventUnsubscribe = session.on((event) => {
+      switch (event.type) {
+        case "user.message":
+          console.log(`[Copilot SDK] Event: user.message`);
+          break;
+        case "assistant.message":
+          const content = event.data?.content || "";
+          console.log(`[Copilot SDK] Event: assistant.message - "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
+          break;
+        case "assistant.message_delta":
+          // Log deltas less verbosely
+          console.log(`[Copilot SDK] Event: assistant.message_delta (streaming)`);
+          break;
+        case "assistant.turn_start":
+          console.log(`[Copilot SDK] Event: assistant.turn_start`);
+          break;
+        case "assistant.turn_end":
+          console.log(`[Copilot SDK] Event: assistant.turn_end`);
+          break;
+        case "assistant.intent":
+          console.log(`[Copilot SDK] Event: assistant.intent - ${event.data?.intent}`);
+          break;
+        case "tool.execution_start":
+          console.log(`[Copilot SDK] Event: tool.execution_start - ${event.data?.toolName}`);
+          break;
+        case "tool.execution_complete":
+          console.log(`[Copilot SDK] Event: tool.execution_complete - ${event.data?.toolCallId} (success: ${event.data?.success})`);
+          break;
+        case "session.idle":
+          console.log(`[Copilot SDK] Event: session.idle`);
+          break;
+        case "session.error":
+          console.log(`[Copilot SDK] Event: session.error - ${event.data?.message}`);
+          break;
+        default:
+          console.log(`[Copilot SDK] Event: ${event.type}`);
+      }
+    });
   }
   return session;
 }
@@ -33,10 +138,11 @@ export async function POST(request: NextRequest) {
   console.log(`[Copilot API][${requestId}] Received chat request`);
 
   try {
-    const { messages, dynamicMode, currentCode } = (await request.json()) as { 
+    const { messages, dynamicMode, currentCode, images } = (await request.json()) as { 
       messages: ChatMessage[];
       dynamicMode?: boolean;
       currentCode?: string;
+      images?: ImageData[];
     };
 
     if (!messages || messages.length === 0) {
@@ -47,7 +153,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Copilot API][${requestId}] Messages count: ${messages.length}, Dynamic mode: ${dynamicMode}`);
+    console.log(`[Copilot API][${requestId}] Messages count: ${messages.length}, Dynamic mode: ${dynamicMode}, Images: ${images?.length || 0}`);
 
     const currentSession = await getSession();
 
@@ -59,6 +165,16 @@ export async function POST(request: NextRequest) {
         { error: "No user message found" },
         { status: 400 }
       );
+    }
+
+    // Save images to temp files if provided
+    const attachments: Array<{ type: "file"; path: string }> = [];
+    if (images && images.length > 0) {
+      for (const image of images) {
+        const tempPath = await saveImageToTemp(image);
+        attachments.push({ type: "file", path: tempPath });
+      }
+      console.log(`[Copilot API][${requestId}] Saved ${attachments.length} images to temp files`);
     }
 
     // Build the prompt - add schema context for dynamic UI mode
@@ -98,7 +214,11 @@ After the code, briefly explain what you changed.
     console.log(`[Copilot API][${requestId}] Sending prompt: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}"`);;
 
     // Use sendAndWait for a simple request/response flow
-    const response = await currentSession.sendAndWait({ prompt });
+    // Include attachments if we have images
+    const response = await currentSession.sendAndWait({ 
+      prompt,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
     
     // Extract content from the response - sendAndWait returns an event with data.content
     const content = response?.data?.content || "";
@@ -125,6 +245,15 @@ After the code, briefly explain what you changed.
 
 export async function DELETE() {
   console.log("[Copilot API] Resetting session");
+  
+  // Clean up temp image files
+  await cleanupTempImages();
+  
+  // Unsubscribe from events
+  if (eventUnsubscribe) {
+    eventUnsubscribe();
+    eventUnsubscribe = null;
+  }
   
   try {
     if (session) {
