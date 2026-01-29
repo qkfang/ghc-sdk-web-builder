@@ -241,79 +241,53 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - starts below header */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/20"
+          className="fixed inset-0 top-[73px] z-40 bg-black/20"
           onClick={onClose}
         />
       )}
 
-      {/* Flyout Panel */}
+      {/* Flyout Panel - positioned below header */}
       <div
         ref={flyoutRef}
         style={{ width: flyoutWidth }}
-        className={`fixed right-0 top-0 z-50 flex h-full flex-col bg-white shadow-xl transition-transform duration-300 dark:bg-zinc-900 ${
+        className={`fixed right-0 top-[73px] z-50 flex h-[calc(100vh-73px)] flex-col bg-slate-800 shadow-xl transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Resize Handle */}
         <div
           onMouseDown={() => setIsResizing(true)}
-          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize bg-transparent hover:bg-blue-500/50 active:bg-blue-500"
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize bg-transparent hover:bg-green-500/50 active:bg-green-500"
         />
         
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Customize with Copilot
-          </h2>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleClearSession}
-              disabled={isLoading}
-              title="New session"
-              className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
+        {/* Minimal Header - matches main app header style */}
+        <div className="flex items-center justify-between bg-slate-900 border-b border-slate-700 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <CopilotIcon className="w-5 h-5 text-green-400" />
+            <h2 className="text-sm font-medium text-gray-200">
+              Copilot Chat
+            </h2>
           </div>
+          <button
+            onClick={handleClearSession}
+            disabled={isLoading}
+            title="Start new session"
+            className="text-xs px-2 py-1 rounded text-gray-400 hover:text-gray-200 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          >
+            New Session
+          </button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 && !isLoading ? (
-            <div className="flex h-full flex-col items-center justify-center text-center text-zinc-500 dark:text-zinc-400">
-              <CopilotIcon className="w-16 h-16 mb-4 opacity-50" />
-              <p>Chat with Copilot to customize this application</p>
+            <div className="flex h-full flex-col items-center justify-center text-center text-gray-400">
+              <CopilotIcon className="w-16 h-16 mb-4 opacity-30" />
+              <p className="text-sm">Describe how you&apos;d like to customize the UI</p>
+              <p className="text-xs text-gray-500 mt-2">Try: &quot;Add a dark mode toggle&quot; or &quot;Make the buttons rounded&quot;</p>
             </div>
           ) : (
             <>
@@ -322,11 +296,11 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
               ))}
               {isLoading && (
                 <div className="flex justify-start mb-3">
-                  <div className="bg-zinc-200 dark:bg-zinc-700 rounded-lg px-4 py-2">
+                  <div className="bg-slate-700 rounded-lg px-4 py-2">
                     <div className="flex gap-1">
-                      <span className="animate-bounce text-zinc-600 dark:text-zinc-300">●</span>
-                      <span className="animate-bounce text-zinc-600 dark:text-zinc-300" style={{ animationDelay: "0.1s" }}>●</span>
-                      <span className="animate-bounce text-zinc-600 dark:text-zinc-300" style={{ animationDelay: "0.2s" }}>●</span>
+                      <span className="animate-bounce text-gray-300">●</span>
+                      <span className="animate-bounce text-gray-300" style={{ animationDelay: "0.1s" }}>●</span>
+                      <span className="animate-bounce text-gray-300" style={{ animationDelay: "0.2s" }}>●</span>
                     </div>
                   </div>
                 </div>

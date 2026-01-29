@@ -30,20 +30,20 @@ function CollapsibleCodeBlock({
   const lineCount = code.split("\n").length;
 
   return (
-    <div className="my-2 rounded-md overflow-hidden border border-zinc-300 dark:border-zinc-600">
+    <div className="my-2 rounded-md overflow-hidden border border-slate-600">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-left transition-colors"
+        className="flex w-full items-center justify-between px-3 py-2 bg-slate-900 hover:bg-slate-800 text-left transition-colors"
       >
-        <span className="flex items-center gap-2 text-xs text-zinc-400">
+        <span className="flex items-center gap-2 text-xs text-gray-400">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
           </svg>
           <span className="font-mono">{language}</span>
-          <span className="text-zinc-500">• {lineCount} lines</span>
+          <span className="text-gray-500">• {lineCount} lines</span>
         </span>
         <svg
-          className={`h-4 w-4 text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+          className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -103,29 +103,29 @@ function ToolExecutionItem({ tool }: { tool: ToolExecution }) {
   const hasDetails = tool.arguments || tool.result;
 
   return (
-    <div className="rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+    <div className="rounded-lg bg-slate-700 overflow-hidden">
       <button
         onClick={() => hasDetails && setIsExpanded(!isExpanded)}
         className={`flex w-full items-center gap-2 px-3 py-2 text-xs text-left ${
-          hasDetails ? "cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" : "cursor-default"
+          hasDetails ? "cursor-pointer hover:bg-slate-600" : "cursor-default"
         }`}
       >
         {tool.status === "running" ? (
-          <span className="animate-spin text-blue-500">⚙</span>
+          <span className="animate-spin text-blue-400">⚙</span>
         ) : tool.success === false ? (
-          <span className="text-red-500">✗</span>
+          <span className="text-red-400">✗</span>
         ) : (
-          <span className="text-green-500">✓</span>
+          <span className="text-green-400">✓</span>
         )}
-        <span className="font-mono text-zinc-700 dark:text-zinc-300 flex-1">
+        <span className="font-mono text-gray-200 flex-1">
           {tool.name}
         </span>
         {tool.status === "running" && (
-          <span className="text-zinc-500 dark:text-zinc-400">running...</span>
+          <span className="text-gray-400">running...</span>
         )}
         {hasDetails && (
           <svg
-            className={`h-4 w-4 text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -135,19 +135,19 @@ function ToolExecutionItem({ tool }: { tool: ToolExecution }) {
         )}
       </button>
       {isExpanded && hasDetails && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs space-y-2">
+        <div className="border-t border-slate-600 px-3 py-2 text-xs space-y-2">
           {tool.arguments && Object.keys(tool.arguments).length > 0 && (
             <div>
-              <div className="font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Arguments:</div>
-              <pre className="bg-zinc-200 dark:bg-zinc-900 rounded p-2 overflow-x-auto text-zinc-700 dark:text-zinc-300">
+              <div className="font-semibold text-gray-400 mb-1">Arguments:</div>
+              <pre className="bg-slate-900 rounded p-2 overflow-x-auto text-gray-300">
                 {JSON.stringify(tool.arguments, null, 2)}
               </pre>
             </div>
           )}
           {tool.result && (
             <div>
-              <div className="font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Result:</div>
-              <pre className="bg-zinc-200 dark:bg-zinc-900 rounded p-2 overflow-x-auto text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap max-h-48">
+              <div className="font-semibold text-gray-400 mb-1">Result:</div>
+              <pre className="bg-slate-900 rounded p-2 overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-48">
                 {tool.result}
               </pre>
             </div>
@@ -184,9 +184,9 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   if (isEvent && message.eventType === "thinking") {
     return (
       <div className="mb-3 flex justify-start">
-        <div className="flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-xs dark:bg-purple-900/30">
-          <span className="animate-pulse text-purple-500">💭</span>
-          <span className="text-purple-700 dark:text-purple-300">
+        <div className="flex items-center gap-2 rounded-lg bg-purple-900/40 px-3 py-2 text-xs">
+          <span className="animate-pulse text-purple-400">💭</span>
+          <span className="text-purple-300">
             {message.content || "Thinking..."}
           </span>
         </div>
@@ -199,8 +199,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       <div
         className={`rounded-lg px-4 py-2 ${
           isUser
-            ? "max-w-[80%] bg-blue-600 text-white"
-            : "w-full bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100"
+            ? "max-w-[80%] bg-green-600 text-white"
+            : "w-full bg-slate-700 text-gray-100"
         }`}
       >
         {isUser ? (

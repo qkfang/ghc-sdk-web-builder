@@ -71,7 +71,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
+    <div className="border-t border-slate-700 p-3 bg-slate-900">
       {/* Image previews */}
       {images.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -80,7 +80,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
               <img
                 src={img.preview}
                 alt="Pasted image"
-                className="h-16 w-16 rounded-lg object-cover border border-zinc-300 dark:border-zinc-600"
+                className="h-16 w-16 rounded-lg object-cover border border-slate-600"
               />
               <button
                 onClick={() => removeImage(img.id)}
@@ -106,12 +106,12 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder={images.length > 0 ? "Add a message about the image(s)..." : "Type a message or paste an image..."}
           disabled={disabled}
           rows={2}
-          className="flex-1 resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-500 focus:border-blue-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-400"
+          className="flex-1 resize-none rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
         <button
           onClick={handleSend}
           disabled={disabled || (!input.trim() && images.length === 0)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Send
         </button>
