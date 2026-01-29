@@ -197,6 +197,7 @@ IMPORTANT RULES:
 4. The component must have a default export
 5. You have access to React hooks: useState, useEffect, useCallback, useMemo
 6. Use fetchAPI(url, options) to make API calls - it returns a Promise
+7. If the user asks questions about APIs or schemas available, or anything related to code, only respond with content related to the current sample application, not the entire code base
 
 ${schemaDoc}
 

@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, category, dueDate } = body;
 
-    if (!title || !category) {
+    if (!title) {
       return NextResponse.json(
-        { error: "Title and category are required" },
+        { error: "Title is required" },
         { status: 400 }
       );
     }
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const todo: Todo = {
       id: uuidv4(),
       title,
-      category: category.toLowerCase(),
+      category: (category || "general").toLowerCase(),
       dueDate: dueDate || new Date().toISOString(),
       completed: false,
       createdAt: new Date().toISOString(),

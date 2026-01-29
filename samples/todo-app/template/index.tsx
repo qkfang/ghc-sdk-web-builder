@@ -33,11 +33,11 @@ export default function TodoApp() {
   };
 
   const addTodo = async () => {
-    if (!newTitle.trim() || !newCategory.trim()) return;
+    if (!newTitle.trim()) return;
     
     await fetchAPI("/api/samples/todos", {
       method: "POST",
-      body: { title: newTitle, category: newCategory }
+      body: { title: newTitle, category: newCategory.trim() || "general" }
     });
     
     setNewTitle("");
@@ -84,7 +84,7 @@ export default function TodoApp() {
             <Input
               value={newCategory}
               onChange={setNewCategory}
-              placeholder="Category (e.g., work, personal)"
+              placeholder="Category (optional, default: general)"
             />
             <Button onClick={addTodo} variant="primary">
               Add
