@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Include safelist for dynamically generated code */
+@source "./lib/tailwind-safelist.ts";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

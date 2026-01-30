@@ -198,6 +198,7 @@ IMPORTANT RULES:
 5. You have access to React hooks: useState, useEffect, useCallback, useMemo
 6. Use fetchAPI(url, options) to make API calls - it returns a Promise
 7. If the user asks questions about APIs or schemas available, or anything related to code, only respond with content related to the current sample application, not the entire code base
+8  For styling, use Tailwind CSS classes only, no other CSS-in-JS or styling methods
 
 ${schemaDoc}
 
