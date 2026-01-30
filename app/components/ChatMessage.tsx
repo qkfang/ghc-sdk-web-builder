@@ -73,6 +73,52 @@ function CollapsibleCodeBlock({
   );
 }
 
+/**
+ * Collapsible section for reasoning/thinking content
+ */
+function CollapsibleSection({ 
+  title, 
+  content,
+  defaultExpanded = false
+}: { 
+  title: string; 
+  content: string;
+  defaultExpanded?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const lineCount = content.split("\n").length;
+
+  return (
+    <div className="mb-3 rounded-md overflow-hidden border border-slate-600">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex w-full items-center justify-between px-3 py-2 bg-slate-900 hover:bg-slate-800 text-left transition-colors"
+      >
+        <span className="flex items-center gap-2 text-xs text-gray-400">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <span>{title}</span>
+          <span className="text-gray-500">• {lineCount} lines</span>
+        </span>
+        <svg
+          className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isExpanded && (
+        <div className="px-3 py-2 bg-slate-900/50 text-xs text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface ToolExecution {
   id: string;
   name: string;
@@ -84,6 +130,9 @@ export interface ToolExecution {
   endTime?: string;
 }
 
+// Response stages for streaming
+export type ResponseStage = "starting" | "planning" | "working" | "complete";
+
 export interface Message {
   id: string;
   role: "user" | "assistant" | "event";
@@ -92,6 +141,9 @@ export interface Message {
   toolExecutions?: ToolExecution[];
   isStreaming?: boolean;
   imageAttachments?: string[]; // Data URLs for image previews
+  // Streaming response fields
+  stage?: ResponseStage;
+  reasoning?: string;
 }
 
 interface ChatMessageProps {
@@ -111,7 +163,10 @@ function ToolExecutionItem({ tool }: { tool: ToolExecution }) {
         }`}
       >
         {tool.status === "running" ? (
-          <span className="animate-spin text-blue-400">⚙</span>
+          <svg className="w-4 h-4 animate-spin text-blue-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
         ) : tool.success === false ? (
           <span className="text-red-400">✗</span>
         ) : (
@@ -162,12 +217,12 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isEvent = message.role === "event";
 
-  // Don't render empty assistant messages
-  if (!isUser && !isEvent && !message.content?.trim()) {
+  // Don't render empty assistant messages (unless they have a stage - streaming)
+  if (!isUser && !isEvent && !message.content?.trim() && !message.stage) {
     return null;
   }
 
-  // Render tool execution events
+  // Render tool execution events (these stay separate)
   if (isEvent && message.toolExecutions && message.toolExecutions.length > 0) {
     return (
       <div className="mb-3 flex justify-start">
@@ -180,46 +235,70 @@ export default function ChatMessage({ message }: ChatMessageProps) {
     );
   }
 
-  // Render thinking/processing events
-  if (isEvent && message.eventType === "thinking") {
+  // Skip old-style thinking events (now handled in streaming response)
+  if (isEvent && (message.eventType === "thinking" || message.eventType === "thinking-complete")) {
+    return null;
+  }
+
+  // User messages
+  if (isUser) {
     return (
-      <div className="mb-3 flex justify-start">
-        <div className="flex items-center gap-2 rounded-lg bg-purple-900/40 px-3 py-2 text-xs">
-          <span className="animate-pulse text-purple-400">💭</span>
-          <span className="text-purple-300">
-            {message.content || "Thinking..."}
-          </span>
+      <div className="flex justify-end mb-3">
+        <div className="max-w-[80%] bg-green-600 text-white rounded-lg px-4 py-2">
+          {message.imageAttachments && message.imageAttachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {message.imageAttachments.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Attached image ${idx + 1}`}
+                  className="max-h-32 rounded-lg border border-green-400/50"
+                />
+              ))}
+            </div>
+          )}
+          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
         </div>
       </div>
     );
   }
 
+  // Assistant messages (streaming or complete)
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
-      <div
-        className={`rounded-lg px-4 py-2 ${
-          isUser
-            ? "max-w-[80%] bg-green-600 text-white"
-            : "w-full bg-slate-700 text-gray-100"
-        }`}
-      >
-        {isUser ? (
-          <div>
-            {message.imageAttachments && message.imageAttachments.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2">
-                {message.imageAttachments.map((src, idx) => (
-                  <img
-                    key={idx}
-                    src={src}
-                    alt={`Attached image ${idx + 1}`}
-                    className="max-h-32 rounded-lg border border-blue-400/50"
-                  />
-                ))}
-              </div>
-            )}
-            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+    <div className="flex justify-start mb-3">
+      <div className="w-full bg-slate-700 text-gray-100 rounded-lg px-4 py-3">
+        {/* Stage indicator */}
+        {message.stage && message.stage !== "complete" && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-gray-400">
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span>
+              {message.stage === "starting" && "Starting"}
+              {message.stage === "planning" && "Planning"}
+              {message.stage === "working" && "Working on it"}
+            </span>
           </div>
-        ) : (
+        )}
+        
+        {message.stage === "complete" && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-gray-400">
+            <span>Complete</span>
+          </div>
+        )}
+
+        {/* Reasoning section - expandable */}
+        {message.reasoning && message.reasoning.trim() && (
+          <CollapsibleSection 
+            title="Reasoning" 
+            content={message.reasoning} 
+            defaultExpanded={false}
+          />
+        )}
+
+        {/* Main content with markdown */}
+        {message.content && message.content.trim() && (
           <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <ReactMarkdown
               components={{

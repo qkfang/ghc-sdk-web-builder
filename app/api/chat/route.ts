@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CopilotClient, CopilotSession } from "@github/copilot-sdk";
 import { generateSchemaDocumentation } from "@/app/lib/schema";
-import { writeFile, unlink, readdir, rm } from "fs/promises";
+import { writeFile, unlink, readdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
@@ -24,7 +24,6 @@ let tempImagePaths: string[] = [];
  * Save base64 image to temp file and return the path
  */
 async function saveImageToTemp(image: ImageData): Promise<string> {
-  // Determine file extension from mime type
   const ext = image.mimeType.split("/")[1] || "png";
   const filename = `${TEMP_PREFIX}${randomUUID()}.${ext}`;
   const tempPath = join(tmpdir(), filename);
@@ -46,7 +45,7 @@ async function cleanupTempImages(): Promise<void> {
     try {
       await unlink(path);
       console.log(`[Copilot API] Deleted temp image: ${path}`);
-    } catch (error) {
+    } catch {
       // File may already be deleted, ignore
     }
   }
@@ -73,7 +72,6 @@ async function cleanupTempImages(): Promise<void> {
 
 let client: CopilotClient | null = null;
 let session: CopilotSession | null = null;
-let eventUnsubscribe: (() => void) | null = null;
 
 async function getSession(): Promise<CopilotSession> {
   if (!client) {
@@ -86,49 +84,10 @@ async function getSession(): Promise<CopilotSession> {
   if (!session) {
     console.log("[Copilot SDK] Creating new session with model: claude-sonnet-4");
     session = await client.createSession({ 
-      model: "claude-sonnet-4"
+      model: "claude-sonnet-4",
+      streaming: true,
     });
-    console.log("[Copilot SDK] Session created successfully");
-    
-    // Subscribe to session events for logging
-    eventUnsubscribe = session.on((event) => {
-      switch (event.type) {
-        case "user.message":
-          console.log(`[Copilot SDK] Event: user.message`);
-          break;
-        case "assistant.message":
-          const content = event.data?.content || "";
-          console.log(`[Copilot SDK] Event: assistant.message - "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
-          break;
-        case "assistant.message_delta":
-          // Log deltas less verbosely
-          console.log(`[Copilot SDK] Event: assistant.message_delta (streaming)`);
-          break;
-        case "assistant.turn_start":
-          console.log(`[Copilot SDK] Event: assistant.turn_start`);
-          break;
-        case "assistant.turn_end":
-          console.log(`[Copilot SDK] Event: assistant.turn_end`);
-          break;
-        case "assistant.intent":
-          console.log(`[Copilot SDK] Event: assistant.intent - ${event.data?.intent}`);
-          break;
-        case "tool.execution_start":
-          console.log(`[Copilot SDK] Event: tool.execution_start - ${event.data?.toolName}`);
-          break;
-        case "tool.execution_complete":
-          console.log(`[Copilot SDK] Event: tool.execution_complete - ${event.data?.toolCallId} (success: ${event.data?.success})`);
-          break;
-        case "session.idle":
-          console.log(`[Copilot SDK] Event: session.idle`);
-          break;
-        case "session.error":
-          console.log(`[Copilot SDK] Event: session.error - ${event.data?.message}`);
-          break;
-        default:
-          console.log(`[Copilot SDK] Event: ${event.type}`);
-      }
-    });
+    console.log("[Copilot SDK] Session created successfully with streaming enabled");
   }
   return session;
 }
@@ -177,7 +136,7 @@ export async function POST(request: NextRequest) {
       console.log(`[Copilot API][${requestId}] Saved ${attachments.length} images to temp files`);
     }
 
-    // Build the prompt - add schema context for dynamic UI mode
+    // Build the prompt
     let prompt = lastUserMessage.content;
     
     if (dynamicMode) {
@@ -213,25 +172,128 @@ After the code, briefly explain what you changed.
       prompt = dynamicSystemContext + "\n\nUser request: " + lastUserMessage.content;
     }
 
-    console.log(`[Copilot API][${requestId}] Sending prompt: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}"`);;
+    console.log(`[Copilot API][${requestId}] Sending prompt with streaming enabled`);
 
-    // Use sendAndWait for a simple request/response flow
-    // Include attachments if we have images
-    const response = await currentSession.sendAndWait({ 
-      prompt,
-      attachments: attachments.length > 0 ? attachments : undefined,
-    });
+    // Create a readable stream for SSE
+    const encoder = new TextEncoder();
     
-    // Extract content from the response - sendAndWait returns an event with data.content
-    const content = response?.data?.content || "";
-    const messageId = response?.data?.messageId || "";
-    
-    console.log(`[Copilot API][${requestId}] Got response: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`);
+    const stream = new ReadableStream({
+      async start(controller) {
+        let finalContent = "";
+        let messageId = "";
+        
+        // Subscribe to session events
+        const unsubscribe = currentSession.on((event) => {
+          try {
+            // Log all events to help debu
+            console.log(`[Copilot SDK] Event: ${event.type}`);
+            
+            switch (event.type) {
+              case "tool.execution_start":
+                console.log(`[Copilot SDK] Tool start: ${event.data?.toolName}`);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: "tool.start",
+                  toolId: event.data?.toolCallId || randomUUID(),
+                  toolName: event.data?.toolName,
+                  arguments: event.data?.arguments,
+                })}\n\n`));
+                break;
+                
+              case "tool.execution_complete":
+                console.log(`[Copilot SDK] Tool complete: ${event.data?.toolCallId}`);
+                const resultStr = typeof event.data?.result === 'string' 
+                  ? event.data.result 
+                  : JSON.stringify(event.data?.result);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: "tool.complete",
+                  toolId: event.data?.toolCallId,
+                  success: event.data?.success,
+                  result: resultStr?.substring(0, 500),
+                })}\n\n`));
+                break;
 
-    return NextResponse.json({
-      content,
-      messageId,
+              case "assistant.reasoning_delta":
+                // Stream reasoning deltas
+                if (event.data?.deltaContent) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: "reasoning",
+                    content: event.data.deltaContent,
+                  })}\n\n`));
+                }
+                break;
+
+              case "assistant.reasoning":
+                // Final reasoning complete
+                console.log(`[Copilot SDK] Final reasoning received`);
+                break;
+                
+              case "assistant.message_delta":
+                // First message delta signals we're now generating the response
+                // Send a working event (only need to send once, but it's idempotent)
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: "working",
+                })}\n\n`));
+                break;
+                
+              case "assistant.message":
+                // Final message
+                finalContent = event.data?.content || "";
+                messageId = event.data?.messageId || "";
+                console.log(`[Copilot SDK] Final message: "${finalContent.substring(0, 100)}..."`);
+                break;
+                
+              case "session.idle":
+                console.log(`[Copilot SDK] Session idle, sending final message`);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: "done",
+                  content: finalContent,
+                  messageId: messageId,
+                })}\n\n`));
+                unsubscribe();
+                controller.close();
+                break;
+                
+              case "session.error":
+                console.error(`[Copilot SDK] Session error: ${event.data?.message}`);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: "error",
+                  message: event.data?.message || "Unknown error",
+                })}\n\n`));
+                unsubscribe();
+                controller.close();
+                break;
+            }
+          } catch (err) {
+            console.error(`[Copilot SDK] Error processing event:`, err);
+          }
+        });
+
+        // Send the message
+        try {
+          await currentSession.send({ 
+            prompt,
+            attachments: attachments.length > 0 ? attachments : undefined,
+          });
+        } catch (err) {
+          console.error(`[Copilot SDK] Error sending message:`, err);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: "error",
+            message: err instanceof Error ? err.message : "Failed to send message",
+          })}\n\n`));
+          unsubscribe();
+          controller.close();
+        }
+      }
     });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+
   } catch (error) {
     console.error(`[Copilot API][${requestId}] Error:`, error);
     session = null;
@@ -250,12 +312,6 @@ export async function DELETE() {
   
   // Clean up temp image files
   await cleanupTempImages();
-  
-  // Unsubscribe from events
-  if (eventUnsubscribe) {
-    eventUnsubscribe();
-    eventUnsubscribe = null;
-  }
   
   try {
     if (session) {

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import ChatMessage, { Message } from "./ChatMessage";
+import ChatMessage, { Message, ToolExecution } from "./ChatMessage";
 import ChatInput, { ImageAttachment } from "./ChatInput";
 import { CopilotIcon } from "./CopilotIcon";
 import { useUser } from "../contexts/UserContext";
@@ -186,6 +186,25 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
+    // Track tool executions for this request
+    const toolExecutions: Map<string, ToolExecution> = new Map();
+    let toolEventMessageId: string | null = null;
+    
+    // Single streaming assistant message
+    const streamingMessageId = `response-${Date.now()}`;
+    let streamingContent = "";
+    let reasoningContent = "";
+    let currentStage: "starting" | "planning" | "working" | "complete" = "starting";
+
+    // Create initial streaming message in starting state
+    setMessages((prev) => [...prev, {
+      id: streamingMessageId,
+      role: "assistant",
+      content: "",
+      stage: "starting",
+      isStreaming: true,
+    }]);
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -210,30 +229,179 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
         throw new Error(data.error || "Failed to get response");
       }
 
-      const data = await response.json();
-      const assistantContent = data.content || "";
-      
-      // Check for dynamic code in the response
-      const dynamicCode = extractDynamicCode(assistantContent);
-      if (dynamicCode && isDynamicMode) {
-        setCurrentCode(dynamicCode);
-        dispatchCodeUpdate(dynamicCode);
+      // Handle SSE streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
       }
 
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: assistantContent,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            switch (data.type) {
+              case "tool.start":
+                // Add or update tool execution
+                toolExecutions.set(data.toolId, {
+                  id: data.toolId,
+                  name: data.toolName,
+                  status: "running",
+                  arguments: data.arguments,
+                  startTime: new Date().toISOString(),
+                });
+                
+                // Create or update the tool event message (separate from response)
+                if (!toolEventMessageId) {
+                  toolEventMessageId = `tools-${Date.now()}`;
+                  // Insert tool message before the streaming response
+                  setMessages((prev) => {
+                    const streamingIdx = prev.findIndex(m => m.id === streamingMessageId);
+                    if (streamingIdx > 0) {
+                      const before = prev.slice(0, streamingIdx);
+                      const after = prev.slice(streamingIdx);
+                      return [
+                        ...before,
+                        {
+                          id: toolEventMessageId!,
+                          role: "event" as const,
+                          content: "",
+                          toolExecutions: Array.from(toolExecutions.values()),
+                        },
+                        ...after,
+                      ];
+                    }
+                    return prev;
+                  });
+                } else {
+                  setMessages((prev) => 
+                    prev.map(m => m.id === toolEventMessageId 
+                      ? { ...m, toolExecutions: Array.from(toolExecutions.values()) }
+                      : m
+                    )
+                  );
+                }
+                break;
+                
+              case "tool.complete":
+                // Update tool execution status
+                const tool = toolExecutions.get(data.toolId);
+                if (tool) {
+                  tool.status = "complete";
+                  tool.success = data.success;
+                  tool.result = data.result;
+                  tool.endTime = new Date().toISOString();
+                  
+                  setMessages((prev) => 
+                    prev.map(m => m.id === toolEventMessageId
+                      ? { ...m, toolExecutions: Array.from(toolExecutions.values()) }
+                      : m
+                    )
+                  );
+                }
+                break;
+              
+              case "reasoning":
+                // Stream reasoning content - update stage to planning
+                reasoningContent += data.content || "";
+                currentStage = "planning";
+                
+                // Update the streaming message with reasoning
+                setMessages((prev) => 
+                  prev.map(m => m.id === streamingMessageId
+                    ? { ...m, stage: "planning" as const, reasoning: reasoningContent }
+                    : m
+                  )
+                );
+                break;
+              
+              case "reasoning.complete":
+                // Legacy event - no longer used
+                break;
+              
+              case "working":
+                // Message generation started - transition to working state
+                if (currentStage !== "working") {
+                  currentStage = "working";
+                  setMessages((prev) => 
+                    prev.map(m => m.id === streamingMessageId
+                      ? { ...m, stage: "working" as const }
+                      : m
+                    )
+                  );
+                }
+                break;
+              
+              case "delta":
+                // Content deltas are not streamed anymore - content comes with "done" event
+                break;
+                
+              case "done":
+                // Final message received - mark as complete
+                const finalContent = data.content || streamingContent;
+                
+                // Check for dynamic code in the response
+                const dynamicCode = extractDynamicCode(finalContent);
+                if (dynamicCode && isDynamicMode) {
+                  setCurrentCode(dynamicCode);
+                  dispatchCodeUpdate(dynamicCode);
+                }
+
+                // Update to complete state
+                setMessages((prev) => 
+                  prev.map(m => m.id === streamingMessageId
+                    ? { 
+                        ...m, 
+                        content: finalContent,
+                        stage: "complete" as const,
+                        reasoning: reasoningContent || undefined,
+                        isStreaming: false,
+                      }
+                    : m
+                  )
+                );
+                break;
+                
+              case "error":
+                throw new Error(data.message || "Unknown error");
+            }
+          } catch (parseErr) {
+            console.error("Failed to parse SSE data:", parseErr, line);
+          }
+        }
+      }
     } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Error: ${error instanceof Error ? error.message : "Failed to get response"}`,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      // Update the streaming message with error content, or create one if it doesn't exist
+      const errorContent = `Error: ${error instanceof Error ? error.message : "Failed to get response"}`;
+      setMessages((prev) => {
+        const hasStreamingMsg = prev.some(m => m.id === streamingMessageId);
+        if (hasStreamingMsg) {
+          return prev.map(m => m.id === streamingMessageId
+            ? { ...m, content: errorContent, stage: "complete" as const, isStreaming: false }
+            : m
+          );
+        } else {
+          return [...prev, {
+            id: streamingMessageId,
+            role: "assistant" as const,
+            content: errorContent,
+            stage: "complete" as const,
+            isStreaming: false,
+          }];
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -286,17 +454,6 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
               {messages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
               ))}
-              {isLoading && (
-                <div className="flex justify-start mb-3">
-                  <div className="bg-slate-700 rounded-lg px-4 py-2">
-                    <div className="flex gap-1">
-                      <span className="animate-bounce text-gray-300">●</span>
-                      <span className="animate-bounce text-gray-300" style={{ animationDelay: "0.1s" }}>●</span>
-                      <span className="animate-bounce text-gray-300" style={{ animationDelay: "0.2s" }}>●</span>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </>
           )}
