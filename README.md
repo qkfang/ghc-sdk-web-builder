@@ -37,7 +37,52 @@ Users interact with GitHub Copilot through a chat interface to request UI change
 - **Node.js** 18.x or higher
 - **npm** 9.x or higher
 - **GitHub Copilot** subscription with API access
-- **GitHub Personal Access Token** with Copilot scope
+
+## Authentication Setup
+
+The application uses the GitHub Copilot SDK which requires authentication. You have two options:
+
+### Option 1: GitHub Copilot CLI Login (Recommended)
+
+The simplest approach is to authenticate using the GitHub Copilot CLI:
+
+1. **Install the Copilot CLI** (if not already installed):
+   ```bash
+   npm install -g @github/copilot
+   ```
+
+2. **Launch the CLI and login**:
+   ```bash
+   copilot
+   ```
+
+3. **Use the `/login` command** within the CLI and follow the browser-based authentication flow.
+
+Once logged in, your credentials are stored securely, and this application will automatically use them.
+
+### Option 2: Personal Access Token via Environment Variable
+
+Alternatively, you can authenticate using a GitHub Personal Access Token (PAT):
+
+1. **Create a fine-grained PAT** at [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+
+2. **Add the "Copilot Requests" permission**:
+   - Under "Permissions", click "Add permissions"
+   - Select **"Copilot Requests"**
+
+3. **Generate and copy the token**
+
+4. **Create a `.env.local` file** in the project root:
+   ```env
+   GH_TOKEN=ghp_your_token_here
+   ```
+  
+
+### Verifying Authentication
+
+When the application starts, it will log the authentication status:
+- ✅ `Authenticated as: <username> via <auth-type>` - You're good to go!
+- ❌ `Not authenticated...` - Check your CLI login or token configuration
 
 ## Getting Started
 
@@ -49,15 +94,9 @@ cd ghcp-cli
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Configure Authentication
 
-Create a `.env.local` file in the project root:
-
-```env
-GITHUB_TOKEN=your_github_personal_access_token
-```
-
-> **Note**: Your GitHub token needs the `copilot` scope to access the Copilot API.
+Follow the [Authentication Setup](#authentication-setup) section above to configure your credentials.
 
 ### 3. Run the Development Server
 

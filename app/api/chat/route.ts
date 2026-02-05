@@ -80,6 +80,18 @@ async function getSession(): Promise<CopilotSession> {
     console.log("[Copilot SDK] Starting client connection...");
     await client.start();
     console.log("[Copilot SDK] Client connected successfully");
+    
+    // Check authentication status before proceeding
+    const authStatus = await client.getAuthStatus();
+    console.log(`[Copilot SDK] Auth status: ${JSON.stringify(authStatus)}`);
+    if (!authStatus.isAuthenticated) {
+      client = null;
+      throw new Error(
+        authStatus.statusMessage || 
+        "Not authenticated. Run 'copilot' and use /login, or set GH_TOKEN environment variable."
+      );
+    }
+    console.log(`[Copilot SDK] Authenticated as: ${authStatus.login} via ${authStatus.authType}`);
   }
   if (!session) {
     console.log("[Copilot SDK] Creating new session with model: claude-sonnet-4");
@@ -88,6 +100,16 @@ async function getSession(): Promise<CopilotSession> {
       streaming: true,
     });
     console.log("[Copilot SDK] Session created successfully with streaming enabled");
+    
+    // Subscribe to session error events globally
+    session.on((event) => {
+      if (event.type === "session.error") {
+        console.error(`[Copilot SDK] Session error [${event.data.errorType}]: ${event.data.message}`);
+        if (event.data.stack) {
+          console.error(`[Copilot SDK] Stack: ${event.data.stack}`);
+        }
+      }
+    });
   }
   return session;
 }
@@ -181,12 +203,36 @@ After the code, briefly explain what you changed.
       async start(controller) {
         let finalContent = "";
         let messageId = "";
+        let streamClosed = false;
+        
+        // Safety timeout to prevent hanging forever (2 minutes)
+        const timeoutId = setTimeout(() => {
+          if (!streamClosed) {
+            console.error(`[Copilot SDK] Timeout waiting for response`);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: "error",
+              message: "Request timed out waiting for response",
+            })}\n\n`));
+            streamClosed = true;
+            controller.close();
+          }
+        }, 120000);
+        
+        const closeStream = () => {
+          if (!streamClosed) {
+            streamClosed = true;
+            clearTimeout(timeoutId);
+            controller.close();
+          }
+        };
         
         // Subscribe to session events
         const unsubscribe = currentSession.on((event) => {
+          if (streamClosed) return;
+          
           try {
-            // Log all events to help debu
-            console.log(`[Copilot SDK] Event: ${event.type}`);
+            // Log all events to help debug
+            console.log(`[Copilot SDK] Event: ${event.type}`, event.data ? JSON.stringify(event.data).substring(0, 200) : '');
             
             switch (event.type) {
               case "tool.execution_start":
@@ -250,7 +296,7 @@ After the code, briefly explain what you changed.
                   messageId: messageId,
                 })}\n\n`));
                 unsubscribe();
-                controller.close();
+                closeStream();
                 break;
                 
               case "session.error":
@@ -260,7 +306,7 @@ After the code, briefly explain what you changed.
                   message: event.data?.message || "Unknown error",
                 })}\n\n`));
                 unsubscribe();
-                controller.close();
+                closeStream();
                 break;
             }
           } catch (err) {
@@ -281,7 +327,7 @@ After the code, briefly explain what you changed.
             message: err instanceof Error ? err.message : "Failed to send message",
           })}\n\n`));
           unsubscribe();
-          controller.close();
+          closeStream();
         }
       }
     });

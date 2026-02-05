@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@github/copilot": "^0.0.402",
     "@github/copilot-sdk": "^0.1.18",
     "@tailwindcss/typography": "^0.5.19",
     "next": "16.1.5",
