@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["@github/copilot-sdk", "@github/copilot"],
 };
 
 export default nextConfig;

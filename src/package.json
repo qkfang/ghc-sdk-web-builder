@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node scripts/patch-copilot-sdk.js"
   },
   "dependencies": {
-    "@github/copilot": "^0.0.402",
-    "@github/copilot-sdk": "^0.1.18",
+    "@github/copilot": "^1.0.3",
+    "@github/copilot-sdk": "^0.1.32",
     "@tailwindcss/typography": "^0.5.19",
     "next": "16.1.5",
     "react": "19.2.3",

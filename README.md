@@ -90,7 +90,7 @@ When the application starts, it will log the authentication status:
 
 ```bash
 git clone <repository-url>
-cd ghcp-cli
+cd src
 npm install
 ```
 

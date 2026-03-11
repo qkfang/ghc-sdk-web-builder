@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/68dfa90d-6200-4bc6-bdad-178344084a61/resourceGroups/ghcp-sdk-test/providers/Microsoft.Web/sites/ghcpsdk",
+    "appService.deploySubpath": "src"
+}

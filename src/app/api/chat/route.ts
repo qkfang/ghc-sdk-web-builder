@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CopilotClient, CopilotSession } from "@github/copilot-sdk";
+import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
 import { generateSchemaDocumentation } from "@/app/lib/schema";
 import { writeFile, unlink, readdir } from "fs/promises";
 import { tmpdir } from "os";
@@ -98,6 +98,7 @@ async function getSession(): Promise<CopilotSession> {
     session = await client.createSession({ 
       model: "claude-sonnet-4",
       streaming: true,
+      onPermissionRequest: approveAll,
     });
     console.log("[Copilot SDK] Session created successfully with streaming enabled");
     
@@ -167,9 +168,12 @@ export async function POST(request: NextRequest) {
 You are helping users customize a Todo application UI by generating React code.
 The user will ask you to make UI changes. You should generate complete, working React component code.
 
+CRITICAL: You MUST ALWAYS output the complete updated code wrapped in <dynamic-code> tags. 
+DO NOT just describe changes - the code will not update unless you provide the actual code.
+
 IMPORTANT RULES:
-1. When the user asks for a UI change, generate the COMPLETE updated component code
-2. Wrap your code in <dynamic-code> tags like this:
+1. When the user asks for ANY UI change (styling, layout, spacing, colors, etc.), you MUST generate the COMPLETE updated component code
+2. ALWAYS wrap your code in <dynamic-code> tags like this:
    <dynamic-code>
    // Your complete React component code here
    export default function TodoApp() { ... }
@@ -179,7 +183,8 @@ IMPORTANT RULES:
 5. You have access to React hooks: useState, useEffect, useCallback, useMemo
 6. Use fetchAPI(url, options) to make API calls - it returns a Promise
 7. If the user asks questions about APIs or schemas available, or anything related to code, only respond with content related to the current sample application, not the entire code base
-8  For styling, use Tailwind CSS classes only, no other CSS-in-JS or styling methods
+8. For styling, use Tailwind CSS classes only, no other CSS-in-JS or styling methods
+9. NEVER respond with just a description of changes. ALWAYS include the actual code.
 
 ${schemaDoc}
 
@@ -188,7 +193,7 @@ CURRENT CODE (modify this based on user request):
 ${currentCode || "// No current code"}
 \`\`\`
 
-Remember: Always provide the COMPLETE component code wrapped in <dynamic-code> tags.
+Remember: You MUST provide the COMPLETE component code wrapped in <dynamic-code> tags for ANY change request.
 After the code, briefly explain what you changed.
 `;
       prompt = dynamicSystemContext + "\n\nUser request: " + lastUserMessage.content;
