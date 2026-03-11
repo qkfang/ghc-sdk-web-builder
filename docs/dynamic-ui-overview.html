@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Copilot SDK Dynamic UI - Project Overview</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/black.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/monokai.css" />
+    <link rel="icon" type="image/svg+xml" href="https://revealjs.com/images/favicon.svg">
+    <style>
+      .reveal h1, .reveal h2, .reveal h3 {
+        text-transform: none;
+      }
+      .two-columns {
+        display: flex;
+        gap: 2em;
+      }
+      .two-columns > * {
+        flex: 1;
+      }
+      .architecture-diagram {
+        background: #1a1a1a;
+        border: 2px solid #4a90e2;
+        border-radius: 8px;
+        padding: 1em;
+        margin: 0.5em 0;
+      }
+      .code-highlight {
+        background: #2d3748;
+        color: #e2e8f0;
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .feature-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1em;
+        border-radius: 8px;
+        margin: 0.5em 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <!-- Slide 1: Title -->
+        <section>
+          <h1>Copilot SDK Dynamic UI</h1>
+          <p>AI-Powered Dynamic User Interfaces</p>
+          <p><small>A demonstration of the GitHub Copilot SDK</small></p>
+        </section>
+
+        <!-- Slide 2: Project Concept -->
+        <section>
+          <h2>🎯 Core Concept</h2>
+          <div class="feature-box">
+            <h3>Chat-Driven UI Development</h3>
+          </div>
+          <ul>
+            <li class="fragment">Users modify interfaces through <strong>natural language chat</strong></li>
+            <li class="fragment">AI generates and compiles <strong>TypeScript/JSX code</strong> in real-time</li>
+            <li class="fragment">Components render <strong>dynamically</strong> without page refresh</li>
+            <li class="fragment">Perfect for rapid prototyping and non-technical users</li>
+          </ul>
+          <aside class="notes">
+            This is a teaching codebase that demonstrates how AI can bridge the gap between user intent and code generation.
+            Users can say "add a dark mode toggle" and the AI will generate the appropriate React code.
+          </aside>
+        </section>
+
+        <!-- Slide 3: Two-Layer Architecture -->
+        <section>
+          <h2>🏗️ Two-Layer Architecture</h2>
+          <div class="two-columns">
+            <div class="architecture-diagram">
+              <h3>Core Framework</h3>
+              <p><code class="code-highlight">app/</code></p>
+              <ul>
+                <li>Dynamic UI engine</li>
+                <li>Chat integration</li>
+                <li>Code compilation</li>
+                <li>UI primitives</li>
+              </ul>
+              <p><strong>Stable & Reusable</strong></p>
+            </div>
+            <div class="architecture-diagram">
+              <h3>Sample Applications</h3>
+              <p><code class="code-highlight">samples/</code></p>
+              <ul>
+                <li>Demo applications</li>
+                <li>API schemas</li>
+                <li>Default templates</li>
+                <li>Business logic</li>
+              </ul>
+              <p><strong>Swappable & Customizable</strong></p>
+            </div>
+          </div>
+          <p class="fragment">✅ Add new samples without touching core framework</p>
+          <aside class="notes">
+            This separation allows the framework to remain stable while different sample applications can be developed independently.
+            Think of it like a game engine (core) with different games (samples) built on top.
+          </aside>
+        </section>
+
+        <!-- Slide 4: Technical Implementation -->
+        <section>
+          <h2>⚙️ Technical Stack</h2>
+          <ul>
+            <li class="fragment"><strong>Next.js 14</strong> - React framework with App Router</li>
+            <li class="fragment"><strong>GitHub Copilot SDK</strong> - AI chat integration</li>
+            <li class="fragment"><strong>Sucrase</strong> - Fast TypeScript/JSX compilation</li>
+            <li class="fragment"><strong>Function() execution</strong> - Sandboxed component rendering</li>
+            <li class="fragment"><strong>File-based storage</strong> - User data persistence</li>
+          </ul>
+          <div class="fragment">
+            <h3>🔄 Compilation Flow</h3>
+            <p><code class="code-highlight">TypeScript/JSX → Sucrase → JavaScript → Function() → React Component</code></p>
+          </div>
+          <aside class="notes">
+            Sucrase was chosen for its speed - it's much faster than TypeScript compiler for this use case.
+            The Function() execution creates a safe sandbox where user-generated code can run without affecting the main application.
+          </aside>
+        </section>
+
+        <!-- Slide 5: Key Features -->
+        <section>
+          <h2>✨ Key Features</h2>
+          <div class="two-columns">
+            <div>
+              <h3>Developer Experience</h3>
+              <ul>
+                <li class="fragment">Real-time code compilation</li>
+                <li class="fragment">Error boundary protection</li>
+                <li class="fragment">Schema-driven API docs</li>
+                <li class="fragment">Component scope isolation</li>
+              </ul>
+            </div>
+            <div>
+              <h3>User Experience</h3>
+              <ul>
+                <li class="fragment">Natural language interface</li>
+                <li class="fragment">Instant visual feedback</li>
+                <li class="fragment">Multi-user support</li>
+                <li class="fragment">Persistent chat history</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fragment feature-box">
+            <p>"Add a button that changes the background color to blue"</p>
+            <p>↓</p>
+            <p>Generates working React code instantly ⚡</p>
+          </div>
+          <aside class="notes">
+            The schema system is particularly clever - it merges core UI components with sample-specific APIs,
+            giving the AI context about both what UI elements are available and what backend functionality exists.
+          </aside>
+        </section>
+
+        <!-- Slide 6: Demo & Future -->
+        <section>
+          <h2>🚀 Try It Yourself</h2>
+          <div class="feature-box">
+            <h3>Sample: Todo Application</h3>
+            <p>Chat-driven task management interface</p>
+          </div>
+          <ul>
+            <li class="fragment">"Add a priority field to each todo"</li>
+            <li class="fragment">"Create a dark mode toggle"</li>
+            <li class="fragment">"Add a search filter"</li>
+            <li class="fragment">"Show completion statistics"</li>
+          </ul>
+          <div class="fragment">
+            <h3>🎯 Perfect For</h3>
+            <p>Rapid prototyping • Non-technical users • AI-assisted development • Educational demos</p>
+          </div>
+          <p class="fragment"><strong>npm run dev</strong> to start exploring! 🎉</p>
+          <aside class="notes">
+            This project showcases the potential of AI-assisted development where users can express intent in natural language
+            and see immediate results. It's particularly valuable for bridging the gap between business requirements and technical implementation.
+          </aside>
+        </section>
+      </div>
+    </div>
+
+    <script type="module">
+      import Reveal from 'https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.esm.js';
+      import Notes from 'https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/notes/notes.esm.js';
+      import Highlight from 'https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/highlight.esm.js';
+
+      Reveal.initialize({
+        hash: true,
+        controls: true,
+        progress: true,
+        center: true,
+        transition: 'slide',
+        plugins: [Notes, Highlight]
+      });
+    </script>
+  </body>
+</html>
