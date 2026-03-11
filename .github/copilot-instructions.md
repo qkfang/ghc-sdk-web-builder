@@ -2,8 +2,6 @@
 
 This document provides guidance for AI agents working on this codebase.
 
-If you are asked to generate slideshow, use the generate_slides agent. Create slides in the "docs" directory with a filename that matches the topic (e.g., "dynamic-ui-overview.md"). 
-
 ## Project Overview
 
 This is a **demonstration application** for the GitHub Copilot SDK. It showcases how to build AI-powered, dynamically updating user interfaces where users can modify the UI through natural language chat.
