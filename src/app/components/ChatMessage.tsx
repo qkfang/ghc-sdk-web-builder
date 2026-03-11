@@ -4,70 +4,246 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 
 /**
- * Extract and replace <dynamic-code> tags with markdown code blocks
- * so they get proper syntax highlighting
+ * Content segment types for mixed rendering
  */
-function preprocessDynamicCode(content: string): string {
-  return content.replace(
-    /<dynamic-code>([\s\S]*?)<\/dynamic-code>/g,
-    (_, code) => `\n\`\`\`tsx\n${code.trim()}\n\`\`\`\n`
-  );
+type ContentSegment = 
+  | { type: "text"; content: string }
+  | { type: "dynamic-code"; code: string };
+
+/**
+ * Parse content into segments of text and dynamic-code blocks
+ * This allows us to render dynamic-code with previousCode context
+ */
+function parseContentSegments(content: string): ContentSegment[] {
+  const segments: ContentSegment[] = [];
+  const regex = /<dynamic-code>([\s\S]*?)<\/dynamic-code>/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    // Add text before this match
+    if (match.index > lastIndex) {
+      const textContent = content.slice(lastIndex, match.index);
+      if (textContent.trim()) {
+        segments.push({ type: "text", content: textContent });
+      }
+    }
+    // Add the dynamic-code block
+    segments.push({ type: "dynamic-code", code: match[1].trim() });
+    lastIndex = regex.lastIndex;
+  }
+
+  // Add remaining text after last match
+  if (lastIndex < content.length) {
+    const textContent = content.slice(lastIndex);
+    if (textContent.trim()) {
+      segments.push({ type: "text", content: textContent });
+    }
+  }
+
+  return segments;
 }
 
 /**
- * Collapsible code block component
+ * Custom styles for the diff viewer to match the dark theme
+ */
+const diffViewerStyles = {
+  variables: {
+    dark: {
+      diffViewerBackground: "#1e293b",
+      diffViewerColor: "#e2e8f0",
+      addedBackground: "#064e3b33",
+      addedColor: "#10b981",
+      removedBackground: "#7f1d1d33",
+      removedColor: "#ef4444",
+      wordAddedBackground: "#065f4633",
+      wordRemovedBackground: "#991b1b33",
+      addedGutterBackground: "#064e3b55",
+      removedGutterBackground: "#7f1d1d55",
+      gutterBackground: "#0f172a",
+      gutterBackgroundDark: "#0f172a",
+      highlightBackground: "#334155",
+      highlightGutterBackground: "#1e293b",
+      codeFoldGutterBackground: "#1e293b",
+      codeFoldBackground: "#1e293b",
+      emptyLineBackground: "#1e293b",
+      codeFoldContentColor: "#94a3b8",
+    },
+  },
+  line: {
+    padding: "0 10px",
+    fontSize: "12px",
+    lineHeight: "0.8",
+  },
+  gutter: {
+    minWidth: "25px",
+    padding: "0 6px",
+    fontSize: "11px",
+    lineHeight: "0.8",
+  },
+  contentText: {
+    fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace",
+    fontSize: "12px",
+    lineHeight: "0.8",
+  },
+  diffContainer: {
+    borderRadius: "0",
+  },
+};
+
+/**
+ * Normalize code for consistent diff comparison
+ * Handles line endings, trailing whitespace, and empty lines
+ */
+function normalizeCode(code: string): string {
+  return code
+    .replace(/\r\n/g, "\n")  // Convert CRLF to LF
+    .replace(/\r/g, "\n")     // Convert remaining CR to LF
+    .split("\n")
+    .map(line => line.trimEnd())  // Remove trailing whitespace from each line
+    .join("\n")
+    .trim();  // Remove leading/trailing empty lines
+}
+
+/**
+ * Collapsible code block component with diff support
  */
 function CollapsibleCodeBlock({ 
   code, 
-  language 
+  language,
+  previousCode,
 }: { 
   code: string; 
   language: string;
+  previousCode?: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<"code" | "diff">("code");
   const lineCount = code.split("\n").length;
+  
+  // Normalize both codes for comparison
+  const normalizedCode = normalizeCode(code);
+  const normalizedPrevious = previousCode ? normalizeCode(previousCode) : undefined;
+  const hasDiff = normalizedPrevious !== undefined && normalizedPrevious !== normalizedCode;
+
+  // Calculate diff stats using normalized code
+  const getDiffStats = () => {
+    if (!normalizedPrevious || normalizedPrevious === normalizedCode) return null;
+    
+    const oldLines = normalizedPrevious.split("\n");
+    const newLines = normalizedCode.split("\n");
+    
+    // Simple line-based diff counting
+    const oldSet = new Set(oldLines);
+    const newSet = new Set(newLines);
+    
+    let added = 0;
+    let removed = 0;
+    
+    for (const line of newLines) {
+      if (!oldSet.has(line)) added++;
+    }
+    for (const line of oldLines) {
+      if (!newSet.has(line)) removed++;
+    }
+    
+    return { added, removed };
+  };
+
+  const diffStats = getDiffStats();
 
   return (
     <div className="my-2 rounded-md overflow-hidden border border-slate-600">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between px-3 py-2 bg-slate-900 hover:bg-slate-800 text-left transition-colors"
-      >
-        <span className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center justify-between px-3 py-2 bg-slate-900">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+        >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
           </svg>
           <span className="font-mono">{language}</span>
           <span className="text-gray-500">• {lineCount} lines</span>
-        </span>
-        <svg
-          className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          {diffStats && (
+            <span className="flex items-center gap-1 ml-2">
+              <span className="text-green-400">+{diffStats.added}</span>
+              <span className="text-red-400">-{diffStats.removed}</span>
+            </span>
+          )}
+          <svg
+            className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {/* View mode toggle - only show when expanded and has diff */}
+        {isExpanded && hasDiff && (
+          <div className="flex items-center gap-1 bg-slate-800 rounded-md p-0.5">
+            <button
+              onClick={() => setViewMode("code")}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === "code"
+                  ? "bg-slate-700 text-gray-200"
+                  : "text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              Full Code
+            </button>
+            <button
+              onClick={() => setViewMode("diff")}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === "diff"
+                  ? "bg-slate-700 text-gray-200"
+                  : "text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              Diff
+            </button>
+          </div>
+        )}
+      </div>
+      
       {isExpanded && (
-        <SyntaxHighlighter
-          style={oneDark}
-          language={language}
-          PreTag="div"
-          customStyle={{
-            margin: 0,
-            padding: "0.75rem",
-            borderRadius: 0,
-            fontSize: "0.75rem",
-            maxHeight: "400px",
-          }}
-          showLineNumbers
-          lineNumberStyle={{ color: "#6b7280", minWidth: "2em", paddingRight: "1em" }}
-        >
-          {code}
-        </SyntaxHighlighter>
+        <>
+          {viewMode === "code" || !hasDiff ? (
+            <SyntaxHighlighter
+              style={oneDark}
+              language={language}
+              PreTag="div"
+              customStyle={{
+                margin: 0,
+                padding: "0.75rem",
+                borderRadius: 0,
+                fontSize: "0.75rem",
+                maxHeight: "400px",
+              }}
+              showLineNumbers
+              lineNumberStyle={{ color: "#6b7280", minWidth: "2em", paddingRight: "1em" }}
+            >
+              {code}
+            </SyntaxHighlighter>
+          ) : (
+            <div className="max-h-[400px] overflow-auto">
+              <ReactDiffViewer
+                oldValue={normalizedPrevious || ""}
+                newValue={normalizedCode}
+                splitView={false}
+                useDarkTheme={true}
+                styles={diffViewerStyles}
+                compareMethod={DiffMethod.LINES}
+                hideLineNumbers={false}
+                showDiffOnly={false}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -119,6 +295,87 @@ function CollapsibleSection({
   );
 }
 
+/**
+ * Renders message content with proper handling of dynamic-code blocks
+ * This allows us to pass previousCode to dynamic-code blocks for diff display
+ */
+function MessageContent({ 
+  content, 
+  previousCode,
+  isStreaming 
+}: { 
+  content: string; 
+  previousCode?: string;
+  isStreaming?: boolean;
+}) {
+  const segments = parseContentSegments(content);
+  
+  // If no segments, just show streaming cursor
+  if (segments.length === 0 && isStreaming) {
+    return <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-zinc-500" />;
+  }
+
+  return (
+    <>
+      {segments.map((segment, index) => {
+        if (segment.type === "dynamic-code") {
+          return (
+            <CollapsibleCodeBlock 
+              key={index} 
+              code={segment.code} 
+              language="tsx"
+              previousCode={previousCode}
+            />
+          );
+        }
+        
+        // Text segment - render with ReactMarkdown
+        return (
+          <ReactMarkdown
+            key={index}
+            components={{
+              code: ({ className, children, ...props }) => {
+                const match = /language-(\w+)/.exec(className || "");
+                const isInline = !match;
+                const codeString = String(children).replace(/\n$/, "");
+                
+                return isInline ? (
+                  <code className="rounded bg-zinc-300 px-1 py-0.5 dark:bg-zinc-600 text-sm" {...props}>
+                    {children}
+                  </code>
+                ) : (
+                  <CollapsibleCodeBlock code={codeString} language={match[1]} />
+                );
+              },
+              pre: ({ children }) => <>{children}</>,
+              ul: ({ children }) => (
+                <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-sm">{children}</li>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
+              ),
+              p: ({ children }) => (
+                <p className="my-2">{children}</p>
+              ),
+            }}
+          >
+            {segment.content}
+          </ReactMarkdown>
+        );
+      })}
+      {isStreaming && (
+        <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-zinc-500" />
+      )}
+    </>
+  );
+}
+
 export interface ToolExecution {
   id: string;
   name: string;
@@ -144,6 +401,8 @@ export interface Message {
   // Streaming response fields
   stage?: ResponseStage;
   reasoning?: string;
+  // Diff support - the code before this change was applied
+  previousCode?: string;
 }
 
 interface ChatMessageProps {
@@ -300,44 +559,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         {/* Main content with markdown */}
         {message.content && message.content.trim() && (
           <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-            <ReactMarkdown
-              components={{
-                code: ({ className, children, ...props }) => {
-                  const match = /language-(\w+)/.exec(className || "");
-                  const isInline = !match;
-                  const codeString = String(children).replace(/\n$/, "");
-                  
-                  return isInline ? (
-                    <code className="rounded bg-zinc-300 px-1 py-0.5 dark:bg-zinc-600 text-sm" {...props}>
-                      {children}
-                    </code>
-                  ) : (
-                    <CollapsibleCodeBlock code={codeString} language={match[1]} />
-                  );
-                },
-                pre: ({ children }) => <>{children}</>,
-                ul: ({ children }) => (
-                  <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>
-                ),
-                li: ({ children }) => (
-                  <li className="text-sm">{children}</li>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
-                ),
-                p: ({ children }) => (
-                  <p className="my-2">{children}</p>
-                ),
-              }}
-            >
-              {preprocessDynamicCode(message.content)}
-            </ReactMarkdown>
-            {message.isStreaming && (
-              <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-zinc-500" />
-            )}
+            <MessageContent 
+              content={message.content}
+              previousCode={message.previousCode}
+              isStreaming={message.isStreaming}
+            />
           </div>
         )}
       </div>

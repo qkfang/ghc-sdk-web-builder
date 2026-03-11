@@ -90,8 +90,8 @@ export default function UserProfile() {
       dispatchClearChat();
       setIsDropdownOpen(false);
       setIsSwitchUserOpen(false);
-      // Trigger a code reload by dispatching a page reload event
-      window.dispatchEvent(new CustomEvent("user-switched"));
+      // Trigger a code reload with the new user ID
+      window.dispatchEvent(new CustomEvent("user-switched", { detail: { userId } }));
     } catch (error) {
       console.error("Failed to switch user:", error);
     }
@@ -100,12 +100,14 @@ export default function UserProfile() {
   const handleCreateNewUser = async () => {
     try {
       const randomName = getRandomName();
-      await createUser(randomName);
+      const newUser = await createUser(randomName);
       dispatchClearChat();
       setIsDropdownOpen(false);
       setIsSwitchUserOpen(false);
-      // Trigger a code reload
-      window.dispatchEvent(new CustomEvent("user-switched"));
+      // Trigger a code reload with the new user ID
+      if (newUser?.id) {
+        window.dispatchEvent(new CustomEvent("user-switched", { detail: { userId: newUser.id } }));
+      }
     } catch (error) {
       console.error("Failed to create new user:", error);
     }

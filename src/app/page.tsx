@@ -55,16 +55,17 @@ export default function Home() {
 
   // Listen for user switch event to reload code
   useEffect(() => {
-    const handleUserSwitched = () => {
-      if (user?.id) {
+    const handleUserSwitched = (event: CustomEvent<{ userId: string }>) => {
+      const userId = event.detail?.userId;
+      if (userId) {
         setIsLoading(true);
-        loadCode(user.id);
+        loadCode(userId);
       }
     };
 
-    window.addEventListener("user-switched", handleUserSwitched);
-    return () => window.removeEventListener("user-switched", handleUserSwitched);
-  }, [user?.id]);
+    window.addEventListener("user-switched", handleUserSwitched as EventListener);
+    return () => window.removeEventListener("user-switched", handleUserSwitched as EventListener);
+  }, []);
 
   // Listen for code updates from chat
   useEffect(() => {

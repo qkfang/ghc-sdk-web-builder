@@ -354,12 +354,16 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
                 
                 // Check for dynamic code in the response
                 const dynamicCode = extractDynamicCode(finalContent);
+                
+                // Capture previous code before updating for diff comparison
+                const previousCodeSnapshot = dynamicCode && isDynamicMode ? currentCode : undefined;
+                
                 if (dynamicCode && isDynamicMode) {
                   setCurrentCode(dynamicCode);
                   dispatchCodeUpdate(dynamicCode);
                 }
 
-                // Update to complete state
+                // Update to complete state with previousCode for diff display
                 setMessages((prev) => 
                   prev.map(m => m.id === streamingMessageId
                     ? { 
@@ -368,6 +372,10 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
                         stage: "complete" as const,
                         reasoning: reasoningContent || undefined,
                         isStreaming: false,
+                        // Include previousCode only if we have dynamic code and it differs
+                        previousCode: previousCodeSnapshot && previousCodeSnapshot !== dynamicCode 
+                          ? previousCodeSnapshot 
+                          : undefined,
                       }
                     : m
                   )
