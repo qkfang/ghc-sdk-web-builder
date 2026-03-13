@@ -167,6 +167,53 @@ The `/api/schema` endpoint automatically merges core component schemas with samp
 
 ## Architecture
 
+### Layer Diagram
+
+```mermaid
+graph TB
+    subgraph Browser["Browser"]
+        UI["Dynamic UI\n(generated & modified by Copilot)"]
+    end
+
+    subgraph Core["Core Framework — app/"]
+        direction TB
+        API["Framework APIs\n/chat · /code · /schema · /user"]
+        Components["React Components\nChatFlyout · DynamicRenderer · UserProfile"]
+        Lib["Core Libraries\nCompiler · Component Scope · Schema"]
+    end
+
+    subgraph AppAPI["Fixed Application API — app/api/samples/"]
+        SampleAPI["Todo API  ⬥ fixed\n/api/samples/todos\nGET · POST · PATCH · DELETE"]
+    end
+
+    subgraph Samples["Sample Definition — samples/"]
+        SampleSchema["Schema & Default Template\nschema.ts · template/index.tsx"]
+    end
+
+    subgraph Storage["Storage Layer"]
+        FS[".user-data/\nFile System Provider"]
+    end
+
+    subgraph External["External Services"]
+        Copilot["GitHub Copilot API"]
+    end
+
+    UI -. "calls at runtime\n(dynamic code → fixed API)" .-> SampleAPI
+    UI -- "chat messages" --> API
+    UI -- "renders dynamic code" --> Components
+    API -- "streams responses" --> Copilot
+    API -- "merges schemas" --> Lib
+    Lib -- "loads templates &\nAPI docs" --> SampleSchema
+    API -- "persists user code\n& data" --> FS
+    SampleAPI -- "reads/writes\nsample data" --> FS
+    Lib -- "compiles TSX &\nprovides components" --> Components
+
+    style UI fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style SampleAPI fill:#fef9c3,stroke:#ca8a04,color:#713f12
+```
+
+> **Key insight:** The UI layer is **dynamic** — Copilot regenerates it on every chat interaction. The Application API (e.g. `/api/samples/todos`) is **fixed** — it provides a stable contract that the dynamic UI code calls at runtime via `fetchAPI`.
+
 ### How It Works
 
 1. **User Request**: User types a modification request in chat
