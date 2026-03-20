@@ -1,7 +1,7 @@
 {
   "name": "todo-app",
   "version": "1.0.0",
-  "description": "A static HTML page builder",
+  "description": "A Million Dollar Start-up Idea for AI Hack for Teenagers",
   "entrypoint": "index.html",
   "files": ["index.html"]
 }

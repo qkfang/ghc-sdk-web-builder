@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dynamic UI Demo",
-  description: "Chat-driven dynamic UI with GitHub Copilot",
+  title: "AI Hack for Teens – Million Dollar Ideas",
+  description: "Build million-dollar AI startup ideas with GitHub Copilot – a hackathon platform for teen innovators",
 };
 
 export default function RootLayout({
