@@ -248,15 +248,20 @@ export class FileSystemStorageProvider implements StorageProvider {
       // Fallback minimal template
       return {
         files: {
-          "index.tsx": `export default function App() {
-  return (
-    <Card title="Welcome">
-      <p>Start chatting with Copilot to build your UI!</p>
-    </Card>
-  );
-}`,
+          "index.html": `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Page</title>
+</head>
+<body>
+  <h1>Welcome</h1>
+  <p>Start chatting with Copilot to build your page!</p>
+</body>
+</html>`,
         },
-        entrypoint: "index.tsx",
+        entrypoint: "index.html",
         version: 0,
         updatedAt: new Date().toISOString(),
       };

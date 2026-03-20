@@ -454,8 +454,8 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
           {messages.length === 0 && !isLoading ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-gray-400">
               <CopilotIcon className="w-16 h-16 mb-4 opacity-30" />
-              <p className="text-sm">Describe how you&apos;d like to customize the UI</p>
-              <p className="text-xs text-gray-500 mt-2">Try: &quot;Add a dark mode toggle&quot; or &quot;Make the buttons rounded&quot;</p>
+              <p className="text-sm">Describe the HTML page you want to build</p>
+              <p className="text-xs text-gray-500 mt-2">Try: &quot;Add a contact form&quot; or &quot;Make the background dark blue&quot;</p>
             </div>
           ) : (
             <>

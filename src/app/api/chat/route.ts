@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
-import { generateSchemaDocumentation } from "@/app/lib/schema";
 import { writeFile, unlink, readdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -163,37 +162,35 @@ export async function POST(request: NextRequest) {
     let prompt = lastUserMessage.content;
     
     if (dynamicMode) {
-      const schemaDoc = generateSchemaDocumentation();
       const dynamicSystemContext = `
-You are helping users customize a Todo application UI by generating React code.
-The user will ask you to make UI changes. You should generate complete, working React component code.
+You are helping users build a static HTML page using HTML, CSS, and JavaScript.
+The user will ask you to create or update the page. You should generate a complete, self-contained HTML page.
 
-CRITICAL: You MUST ALWAYS output the complete updated code wrapped in <dynamic-code> tags. 
-DO NOT just describe changes - the code will not update unless you provide the actual code.
+CRITICAL: You MUST ALWAYS output the complete HTML page wrapped in <dynamic-code> tags.
+DO NOT just describe changes - the page will not update unless you provide the actual HTML.
 
 IMPORTANT RULES:
-1. When the user asks for ANY UI change (styling, layout, spacing, colors, etc.), you MUST generate the COMPLETE updated component code
-2. ALWAYS wrap your code in <dynamic-code> tags like this:
+1. Generate a COMPLETE HTML page including <!DOCTYPE html>, <html>, <head>, and <body> tags
+2. ALWAYS wrap your HTML in <dynamic-code> tags like this:
    <dynamic-code>
-   // Your complete React component code here
-   export default function TodoApp() { ... }
+   <!DOCTYPE html>
+   <html lang="en">
+   ...
+   </html>
    </dynamic-code>
-3. You can ONLY use the components and APIs listed below
-4. The component must have a default export
-5. You have access to React hooks: useState, useEffect, useCallback, useMemo
-6. Use fetchAPI(url, options) to make API calls - it returns a Promise
-7. If the user asks questions about APIs or schemas available, or anything related to code, only respond with content related to the current sample application, not the entire code base
-8. For styling, use Tailwind CSS classes only, no other CSS-in-JS or styling methods
-9. NEVER respond with just a description of changes. ALWAYS include the actual code.
+3. Use only HTML, CSS, and JavaScript — you may load libraries from a CDN (e.g. Bootstrap, Tailwind CSS, Alpine.js, Chart.js)
+4. All custom styles must be inline inside <style> tags in the <head>
+5. All custom JavaScript must be inline inside <script> tags
+6. NEVER suggest, generate, or discuss any backend code, server-side code, API routes, database changes, or server configuration
+7. If the user asks about backend, server, or API changes, politely decline and offer to help with the HTML page only
+8. NEVER respond with just a description of changes. ALWAYS include the complete HTML.
 
-${schemaDoc}
-
-CURRENT CODE (modify this based on user request):
-\`\`\`tsx
-${currentCode || "// No current code"}
+CURRENT HTML (modify this based on user request):
+\`\`\`html
+${currentCode || "<!-- No current HTML -->"}
 \`\`\`
 
-Remember: You MUST provide the COMPLETE component code wrapped in <dynamic-code> tags for ANY change request.
+Remember: You MUST provide the COMPLETE HTML page wrapped in <dynamic-code> tags for ANY change request.
 After the code, briefly explain what you changed.
 `;
       prompt = dynamicSystemContext + "\n\nUser request: " + lastUserMessage.content;
