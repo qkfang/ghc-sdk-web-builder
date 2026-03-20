@@ -28,8 +28,8 @@ export default function Home() {
   const { user, isLoading: isUserLoading } = useUser();
   const [code, setCode] = useState<string>("");
   const [files, setFiles] = useState<Record<string, string>>({});
-  const [entrypoint, setEntrypoint] = useState<string>("index.tsx");
-  const [selectedFile, setSelectedFile] = useState<string>("index.tsx");
+  const [entrypoint, setEntrypoint] = useState<string>("index.html");
+  const [selectedFile, setSelectedFile] = useState<string>("index.html");
   const [isLoading, setIsLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showCode, setShowCode] = useState(false);

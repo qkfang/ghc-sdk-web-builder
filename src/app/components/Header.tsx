@@ -33,7 +33,7 @@ export default function Header({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Dynamic UI Demo
+                HTML Page Builder
               </h1>
               {sampleName && (
                 <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full">
@@ -42,7 +42,7 @@ export default function Header({
               )}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Chat with Copilot to customize this UI • Version {version}
+              Chat with Copilot to build your static HTML page • Version {version}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function Header({
               }`}
             >
               <CopilotIcon className="w-4 h-4" />
-              {isChatOpen ? "Close Chat" : "Customize with Copilot"}
+              {isChatOpen ? "Close Chat" : "Build with Copilot"}
             </button>
             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
             <UserProfile />
@@ -94,11 +94,11 @@ export default function Header({
         {showHowTo && (
           <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-              <li>• Click <strong>&quot;Chat with Copilot&quot;</strong> above to open the chat panel</li>
-              <li>• Ask Copilot to modify the UI (e.g., &quot;Make the header blue&quot;, &quot;Add a priority field&quot;)</li>
-              <li>• Copilot will generate new code and apply it instantly</li>
-              <li>• Use <strong>&quot;Show Code&quot;</strong> to see the current source</li>
-              <li>• Use <strong>&quot;Reset&quot;</strong> to go back to the default UI</li>
+              <li>• Click <strong>&quot;Build with Copilot&quot;</strong> above to open the chat panel</li>
+              <li>• Ask Copilot to build or modify your HTML page (e.g., &quot;Add a contact form&quot;, &quot;Make the background dark&quot;)</li>
+              <li>• Copilot will generate a complete HTML page and apply it instantly</li>
+              <li>• Use <strong>&quot;Show Code&quot;</strong> to see the current HTML source</li>
+              <li>• Use <strong>&quot;Reset&quot;</strong> to go back to the default page</li>
               <li>• You can also paste images into the chat for Copilot to analyze</li>
             </ul>
           </div>
