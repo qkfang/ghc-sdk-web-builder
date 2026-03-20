@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CopilotIcon } from "./CopilotIcon";
 import UserProfile from "./UserProfile";
 
@@ -46,6 +47,13 @@ export default function Header({
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/gallery"
+              className="px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+            >
+              Gallery
+            </Link>
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
             <button
               onClick={() => setShowHowTo(!showHowTo)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
