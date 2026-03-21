@@ -142,7 +142,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   └── page.tsx
 │
 └── samples/                # SAMPLE APPLICATIONS (swappable)
-    └── todo-app/
+    └── startup-app/
         ├── template/      # Default UI code
         │   ├── index.tsx
         │   └── manifest.json
@@ -250,7 +250,7 @@ The `/api/schema` endpoint **merges two schema sources**:
    - Component props and types
    - React hooks (useState, useEffect, etc.)
 
-2. **Sample Schema** (`samples/todo-app/schema.ts`)
+2. **Sample Schema** (`samples/startup-app/schema.ts`)
    - Sample-specific API endpoints
    - Request/response formats
    - Data models
@@ -299,7 +299,7 @@ export const componentScope = {
 
 1. Create a new route in `app/api/samples/your-endpoint/route.ts`
 
-2. Add the endpoint to the sample schema in `samples/todo-app/schema.ts`:
+2. Add the endpoint to the sample schema in `samples/startup-app/schema.ts`:
 
 ```tsx
 {
@@ -312,12 +312,12 @@ export const componentScope = {
 
 ### Modifying the Default Template
 
-Edit `samples/todo-app/template/index.tsx` to change what users see initially. This template is loaded for new users or when they reset.
+Edit `samples/startup-app/template/index.tsx` to change what users see initially. This template is loaded for new users or when they reset.
 
 ### Adding Multiple Files to Templates
 
-1. Add new files to `samples/todo-app/template/`
-2. Update `samples/todo-app/template/manifest.json`:
+1. Add new files to `samples/startup-app/template/`
+2. Update `samples/startup-app/template/manifest.json`:
 
 ```json
 {
@@ -385,7 +385,7 @@ export function generateApiDocumentation(): string {
 import * as yourAppSchema from "@/samples/your-app/schema";
 
 const schemaRegistry: Record<string, SampleSchema> = {
-  "todo-app": todoAppSchema,
+  "startup-app": todoAppSchema,
   "your-app": yourAppSchema,  // Add your sample here
 };
 ```

@@ -60,7 +60,7 @@ This is a **demonstration and teaching codebase**. Prioritize:
 │   └── page.tsx
 │
 └── samples/                # SAMPLE APPLICATIONS (swappable)
-    └── todo-app/
+    └── startup-app/
         ├── template/      # Default code template
         │   ├── index.tsx  # Main UI (runtime compiled)
         │   └── manifest.json
@@ -113,7 +113,7 @@ Schemas are split between core and sample:
 | Schema | Location | Contents |
 |--------|----------|----------|
 | **Core** | `app/lib/schema.ts` | UI components, props, React hooks |
-| **Sample** | `samples/todo-app/schema.ts` | API endpoints, data models |
+| **Sample** | `samples/startup-app/schema.ts` | API endpoints, data models |
 
 The `/api/schema/route.ts` **merges both schemas** when providing context to Copilot. This allows:
 - Core components to be reused across samples
@@ -145,7 +145,7 @@ Sample applications live in `samples/`:
 
 ```
 samples/
-└── todo-app/
+└── startup-app/
     ├── template/
     │   ├── index.tsx      # Default UI (has @ts-nocheck)
     │   └── manifest.json  # Template metadata
@@ -162,9 +162,9 @@ samples/
 
 ### Modifying the Todo Sample
 
-1. Edit `samples/todo-app/template/index.tsx` for UI changes
+1. Edit `samples/startup-app/template/index.tsx` for UI changes
 2. Edit `app/api/samples/todos/route.ts` for API changes
-3. Update `samples/todo-app/schema.ts` when adding endpoints
+3. Update `samples/startup-app/schema.ts` when adding endpoints
 
 ## Dynamic Code Compilation
 
@@ -212,7 +212,7 @@ Custom events for cross-component communication:
 
 ### Modifying the Default Template
 
-1. Edit `samples/todo-app/template/index.tsx`
+1. Edit `samples/startup-app/template/index.tsx`
 2. Keep `@ts-nocheck` at top (runtime-compiled code)
 3. Only use components from `componentScope`
 

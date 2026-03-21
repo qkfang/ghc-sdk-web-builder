@@ -9,7 +9,7 @@ import { APIEndpoint } from "@/app/lib/schema";
 
 // Import all sample schemas
 // Add new samples here as they are created
-import * as todoAppSchema from "@/samples/todo-app/schema";
+import * as todoAppSchema from "@/samples/startup-app/schema";
 
 /**
  * Schema module interface - what each sample schema must export
@@ -27,7 +27,7 @@ export interface SampleSchema {
  * Key is the folder name under samples/
  */
 const schemaRegistry: Record<string, SampleSchema> = {
-  "todo-app": todoAppSchema,
+  "startup-app": todoAppSchema,
   // Add new samples here:
   // "my-sample": myAppSchema,
 };
@@ -36,20 +36,20 @@ const schemaRegistry: Record<string, SampleSchema> = {
  * Get the active sample name from environment
  */
 export function getActiveSampleName(): string {
-  return process.env.SAMPLE_NAME || "todo-app";
+  return process.env.SAMPLE_NAME || "startup-app";
 }
 
 /**
  * Get the schema for the active sample
- * Falls back to todo-app if the specified sample doesn't exist
+ * Falls back to startup-app if the specified sample doesn't exist
  */
 export function getActiveSchema(): SampleSchema {
   const sampleName = getActiveSampleName();
   const schema = schemaRegistry[sampleName];
   
   if (!schema) {
-    console.warn(`[Schema Registry] Sample "${sampleName}" not found, falling back to todo-app`);
-    return schemaRegistry["todo-app"];
+    console.warn(`[Schema Registry] Sample "${sampleName}" not found, falling back to startup-app`);
+    return schemaRegistry["startup-app"];
   }
   
   return schema;

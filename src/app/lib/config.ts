@@ -6,12 +6,12 @@
 
 /**
  * Get the active sample name from environment variable.
- * Defaults to "todo-app" if not specified.
+ * Defaults to "startup-app" if not specified.
  * 
  * Set via: SAMPLE_NAME=your-sample-name
  */
 export function getActiveSampleName(): string {
-  return process.env.SAMPLE_NAME || "todo-app";
+  return process.env.SAMPLE_NAME || "startup-app";
 }
 
 /**

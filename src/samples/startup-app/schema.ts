@@ -7,7 +7,7 @@
 
 import { APIEndpoint } from "@/app/lib/schema";
 
-export const sampleName = "todo-app";
+export const sampleName = "startup-app";
 export const sampleDescription = "A simple todo application with categories and filtering";
 
 /**
