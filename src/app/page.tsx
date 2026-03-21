@@ -184,10 +184,10 @@ export default function Home() {
       )}
 
       {/* Main Content */}
-      <main className={isFullScreen ? "h-screen p-0" : "max-w-6xl mx-auto px-4 py-4"}>
+      <main className={isFullScreen ? "h-screen p-0" : "max-w-6xl mx-auto px-4 py-2"}>
         <div className={`grid gap-6 grid-cols-1 ${isFullScreen ? "h-full" : ""}`}>
           {/* Dynamic UI */}
-          <div className={`bg-white dark:bg-gray-800 shadow-lg ${isFullScreen ? "h-full" : "rounded-xl p-6 min-h-[600px]"}`}>
+          <div className={`bg-white dark:bg-gray-800 shadow-lg ${isFullScreen ? "h-full" : "rounded-xl p-6 min-h-[calc(100vh-70px)]"}`}>
             <DynamicRenderer
               code={code}
               onError={handleCompileError}
