@@ -98,16 +98,14 @@ export default function GalleryViewerPage() {
       </header>
 
       {/* Full-size preview */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden" style={{ minHeight: "600px" }}>
-          <iframe
-            srcDoc={design.code}
-            sandbox="allow-scripts allow-forms allow-modals"
-            className="w-full border-0"
-            style={{ minHeight: "600px", height: "80vh" }}
-            title={`${design.userName}'s design`}
-          />
-        </div>
+      <main className="flex-1">
+        <iframe
+          srcDoc={design.code}
+          sandbox="allow-scripts allow-forms allow-modals"
+          className="w-full border-0"
+          style={{ height: "calc(100vh - 36px)" }}
+          title={`${design.userName}'s design`}
+        />
       </main>
     </div>
   );
