@@ -37,6 +37,7 @@ export default function Home() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [sampleName, setSampleName] = useState<string>("");
   const [showHowTo, setShowHowTo] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Fetch sample name on mount
   useEffect(() => {
@@ -167,13 +168,26 @@ export default function Home() {
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
         onReset={resetCode}
+        isFullScreen={isFullScreen}
+        setIsFullScreen={setIsFullScreen}
       />
 
+      {/* Exit Full Screen Button */}
+      {isFullScreen && (
+        <button
+          onClick={() => setIsFullScreen(false)}
+          className="fixed top-2 right-2 z-50 px-2 py-1 text-xs bg-gray-800/80 text-white rounded hover:bg-gray-700 transition-colors backdrop-blur-sm"
+          title="Exit full screen"
+        >
+          ✕ Exit Full Screen
+        </button>
+      )}
+
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className={`grid gap-6 ${showCode ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+      <main className={isFullScreen ? "h-screen p-0" : "max-w-6xl mx-auto px-4 py-4"}>
+        <div className={`grid gap-6 ${isFullScreen ? "h-full" : ""} ${showCode ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
           {/* Dynamic UI */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 min-h-[600px]">
+          <div className={`bg-white dark:bg-gray-800 shadow-lg ${isFullScreen ? "h-full" : "rounded-xl p-6 min-h-[600px]"}`}>
             <DynamicRenderer
               code={code}
               onError={handleCompileError}
