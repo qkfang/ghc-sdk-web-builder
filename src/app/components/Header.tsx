@@ -34,7 +34,7 @@ export default function Header({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                HTML Page Builder
+                Startup Idea Builder
               </h1>
               {sampleName && (
                 <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full">
@@ -43,7 +43,7 @@ export default function Header({
               )}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Chat with Copilot to build your static HTML page • Version {version}
+              Chat with Copilot to build a marketing page • Version {version}
             </p>
           </div>
           <div className="flex items-center gap-3">
