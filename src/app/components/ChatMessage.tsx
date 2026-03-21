@@ -358,7 +358,7 @@ function MessageContent({
                 <li className="text-sm">{children}</li>
               ),
               strong: ({ children }) => (
-                <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
+                <strong className="font-semibold text-white">{children}</strong>
               ),
               p: ({ children }) => (
                 <p className="my-2">{children}</p>
@@ -558,7 +558,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
         {/* Main content with markdown */}
         {message.content && message.content.trim() && (
-          <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <div className="prose prose-sm prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <MessageContent 
               content={message.content}
               previousCode={message.previousCode}
