@@ -185,7 +185,7 @@ export default function Home() {
 
       {/* Main Content */}
       <main className={isFullScreen ? "h-screen p-0" : "max-w-6xl mx-auto px-4 py-4"}>
-        <div className={`grid gap-6 ${isFullScreen ? "h-full" : ""} ${showCode ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+        <div className={`grid gap-6 grid-cols-1 ${isFullScreen ? "h-full" : ""}`}>
           {/* Dynamic UI */}
           <div className={`bg-white dark:bg-gray-800 shadow-lg ${isFullScreen ? "h-full" : "rounded-xl p-6 min-h-[600px]"}`}>
             <DynamicRenderer
@@ -194,25 +194,29 @@ export default function Home() {
               onSuccess={handleCompileSuccess}
             />
           </div>
+        </div>
+      </main>
 
-          {/* Code Panel */}
-          {showCode && (
-            <div className="bg-gray-900 rounded-xl shadow-lg overflow-hidden flex flex-col">
-              {/* File Tabs */}
-              <div className="flex items-center bg-gray-800 border-b border-gray-700 overflow-x-auto">
+      {/* Code Panel Modal */}
+      {showCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowCode(false)}>
+          <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between bg-gray-800 border-b border-gray-700 px-4 py-2 shrink-0">
+              <div className="flex items-center overflow-x-auto gap-1">
                 {Object.keys(files).map((filename) => (
                   <button
                     key={filename}
                     onClick={() => setSelectedFile(filename)}
-                    className={`px-4 py-2 text-sm whitespace-nowrap border-b-2 transition-colors ${
+                    className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-md transition-colors ${
                       selectedFile === filename
-                        ? "text-blue-400 border-blue-400 bg-gray-900"
-                        : "text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-700/50"
+                        ? "text-blue-400 bg-gray-900"
+                        : "text-gray-400 hover:text-gray-300 hover:bg-gray-700/50"
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
                       {filename === entrypoint && (
-                        <span className="text-xs text-green-400" title="Entrypoint">●</span>
+                        <span className="text-green-400" title="Entrypoint">●</span>
                       )}
                       {filename}
                     </span>
@@ -222,27 +226,32 @@ export default function Home() {
                   <span className="ml-auto px-3 text-xs text-red-400">Has errors</span>
                 )}
               </div>
-              {/* Code Content */}
-              <div className="overflow-auto flex-1 max-h-[560px]">
-                <SyntaxHighlighter
-                  language={getLanguageFromFilename(selectedFile)}
-                  style={oneDark}
-                  customStyle={{
-                    margin: 0,
-                    padding: "1rem",
-                    background: "transparent",
-                    fontSize: "0.875rem",
-                  }}
-                  showLineNumbers
-                  lineNumberStyle={{ color: "#6b7280", minWidth: "2.5em" }}
-                >
-                  {files[selectedFile] || "// No content"}
-                </SyntaxHighlighter>
-              </div>
+              <button onClick={() => setShowCode(false)} className="ml-3 p-1 text-gray-400 hover:text-white rounded transition-colors shrink-0">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-          )}
+            {/* Code Content */}
+            <div className="overflow-auto flex-1">
+              <SyntaxHighlighter
+                language={getLanguageFromFilename(selectedFile)}
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  padding: "1rem",
+                  background: "transparent",
+                  fontSize: "0.875rem",
+                }}
+                showLineNumbers
+                lineNumberStyle={{ color: "#6b7280", minWidth: "2.5em" }}
+              >
+                {files[selectedFile] || "// No content"}
+              </SyntaxHighlighter>
+            </div>
+          </div>
         </div>
-      </main>
+      )}
 
       {/* Chat Flyout */}
       <ChatFlyout isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
