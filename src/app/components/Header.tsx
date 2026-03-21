@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { CopilotIcon } from "./CopilotIcon";
 import UserProfile from "./UserProfile";
@@ -31,13 +32,75 @@ export default function Header({
   isFullScreen,
   setIsFullScreen,
 }: HeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
   if (isFullScreen) return null;
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-6xl mx-auto px-4 py-1.5">
         <div className="flex items-center justify-between">
+          {/* Left: hamburger + title */}
           <div className="flex items-center gap-2">
+            {/* Hamburger menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                aria-label="Menu"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+
+              {menuOpen && (
+                <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    onClick={() => { setShowHowTo(!showHowTo); setMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                      showHowTo
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {showHowTo ? "✓ " : ""}How to Use
+                  </button>
+                  <button
+                    onClick={() => { setShowCode(!showCode); setMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                      showCode
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {showCode ? "✓ Hide Code" : "Show Code"}
+                  </button>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                  <button
+                    onClick={() => { onReset(); setMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+            </div>
+
             <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
               Startup Idea Builder
             </h1>
@@ -48,6 +111,8 @@ export default function Header({
             )}
             <span className="text-[10px] text-gray-400 dark:text-gray-500">v{version}</span>
           </div>
+
+          {/* Right: gallery, fullscreen, copilot, user */}
           <div className="flex items-center gap-2">
             <Link
               href="/gallery"
@@ -55,34 +120,6 @@ export default function Header({
             >
               Gallery
             </Link>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
-            <button
-              onClick={() => setShowHowTo(!showHowTo)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                showHowTo
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
-                  : "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-              }`}
-            >
-              How to Use
-            </button>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
-            <button
-              onClick={() => setShowCode(!showCode)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                showCode
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
-                  : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-              }`}
-            >
-              {showCode ? "Hide Code" : "Show Code"}
-            </button>
-            <button
-              onClick={onReset}
-              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Reset
-            </button>
             <button
               onClick={() => setIsFullScreen(true)}
               className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
