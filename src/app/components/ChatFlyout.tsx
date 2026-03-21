@@ -48,7 +48,7 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
   const isDynamicMode = pathname === "/" || pathname === "/dynamic";
 
   // Min and max width constraints
-  const MIN_WIDTH = 320;
+  const MIN_WIDTH = 280;
   const MAX_WIDTH = 800;
 
   // Handle resize drag
@@ -420,8 +420,8 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
       {/* Flyout Panel - positioned below header */}
       <div
         ref={flyoutRef}
-        style={{ width: flyoutWidth }}
-        className={`fixed right-0 top-[80px] z-50 flex h-[calc(100vh-77px)] flex-col bg-slate-800 border-l border-t border-slate-600/50 shadow-xl transition-transform duration-300 ${
+        style={{ width: Math.min(flyoutWidth, typeof window !== 'undefined' ? window.innerWidth : flyoutWidth) }}
+        className={`fixed right-0 top-[80px] z-50 flex h-[calc(100vh-77px)] max-w-[100vw] flex-col bg-slate-800 border-l border-t border-slate-600/50 shadow-xl transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -450,7 +450,7 @@ export default function ChatFlyout({ isOpen, onClose }: ChatFlyoutProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3">
           {messages.length === 0 && !isLoading ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-gray-400">
               <CopilotIcon className="w-16 h-16 mb-4 opacity-30" />

@@ -74,19 +74,19 @@ const diffViewerStyles = {
     },
   },
   line: {
-    padding: "0 10px",
-    fontSize: "12px",
-    lineHeight: "0.8",
-  },
-  gutter: {
-    minWidth: "25px",
     padding: "0 6px",
     fontSize: "11px",
     lineHeight: "0.8",
   },
+  gutter: {
+    minWidth: "20px",
+    padding: "0 4px",
+    fontSize: "10px",
+    lineHeight: "0.8",
+  },
   contentText: {
     fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace",
-    fontSize: "12px",
+    fontSize: "11px",
     lineHeight: "0.8",
   },
   diffContainer: {
@@ -525,7 +525,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   // Assistant messages (streaming or complete)
   return (
     <div className="flex justify-start mb-3">
-      <div className="w-full bg-slate-700 text-gray-100 rounded-lg px-4 py-3">
+      <div className="w-full bg-slate-700 text-gray-100 rounded-lg px-3 py-2">
         {/* Stage indicator */}
         {message.stage && message.stage !== "complete" && (
           <div className="flex items-center gap-2 mb-2 text-xs text-gray-400">
