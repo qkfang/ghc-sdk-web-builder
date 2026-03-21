@@ -39,22 +39,17 @@ export default function GalleryPage() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-6xl mx-auto px-4 py-1.5">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Design Gallery
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Browse designs created by all users
-              </p>
-            </div>
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Design Gallery
+            </h1>
             <Link
               href="/"
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             >
-              &larr; Back to Builder
+              &larr; Back
             </Link>
           </div>
         </div>

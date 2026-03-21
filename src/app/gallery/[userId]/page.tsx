@@ -75,29 +75,23 @@ export default function GalleryViewerPage() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-6xl mx-auto px-4 py-1.5">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {design.userName}&apos;s Design
-                </h1>
-                <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 rounded-full">
-                  Read Only
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Version {design.version}
-                {design.updatedAt &&
-                  ` • Updated ${new Date(design.updatedAt).toLocaleDateString()}`}
-              </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
+                {design.userName}&apos;s Design
+              </h1>
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 rounded-full">
+                Read Only
+              </span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">v{design.version}</span>
             </div>
             <Link
               href="/gallery"
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             >
-              &larr; Back to Gallery
+              &larr; Gallery
             </Link>
           </div>
         </div>
